@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BookOpenCheck } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 
@@ -21,7 +22,11 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Quick pause to reflect 🕯️" size="md">
+    <Modal open={open} onClose={onClose} title="Quick pause to reflect" size="md">
+      <div className="flex items-center gap-2 text-amber-500/70 mb-4">
+        <BookOpenCheck className="w-4 h-4" strokeWidth={1.5} />
+        <span className="text-xs">Comprehension check</span>
+      </div>
       <p className="text-gray-300 mb-5 font-serif">{question.question}</p>
       <div className="space-y-2 mb-6">
         {question.options.map((opt, i) => (
@@ -44,7 +49,7 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
       </div>
       {submitted ? (
         <p className="text-center text-amber-400 text-sm">
-          {selected === question.correct ? 'Well done! Keep walking. ✨' : 'No worries — grace covers us. Keep reading! 🌿'}
+          {selected === question.correct ? 'Well done! Keep walking.' : 'No worries — grace covers us. Keep reading!'}
         </p>
       ) : (
         <Button className="w-full" onClick={handleSubmit} disabled={selected === null}>

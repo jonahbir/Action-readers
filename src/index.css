@@ -28,10 +28,12 @@ body {
   color: #f3f4f6;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .font-serif {
@@ -42,9 +44,36 @@ body {
   animation: fadeIn 0.35s ease-out;
 }
 
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
 @keyframes pulse-glow {
@@ -54,6 +83,14 @@ body {
 
 .milestone-glow {
   animation: pulse-glow 2s ease-in-out;
+}
+
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
 }
 
 .scrollbar-hide::-webkit-scrollbar {

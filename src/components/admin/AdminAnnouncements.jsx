@@ -77,7 +77,7 @@ export default function AdminAnnouncements() {
                 <Avatar src={ann.users?.avatar_url} handle={ann.users?.biblical_handle} />
                 <div>
                   <p className="text-amber-400 text-sm">@{ann.users?.biblical_handle} <span className="text-gray-600">({ann.users?.display_name})</span></p>
-                  <h4 className="font-serif text-white">{ann.title} {ann.pinned && '📌'}</h4>
+                  <h4 className="font-serif text-white">{ann.title}{ann.pinned && <span className="ml-2 text-xs text-amber-500 font-normal">(Pinned)</span>}</h4>
                   <p className="text-sm text-gray-300 mt-1">{ann.body}</p>
                   <p className="text-xs text-gray-600 mt-2">{new Date(ann.created_at).toLocaleString()}</p>
                 </div>

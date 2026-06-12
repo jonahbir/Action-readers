@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import Card from '../ui/Card'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
+import FileUploadZone from '../ui/FileUploadZone'
+import ProgressBar from '../ui/ProgressBar'
 
 const emptyBook = {
   title: '', author: '', description: '', why_this_book: '', verse_of_week: '',
@@ -16,6 +18,8 @@ export default function AdminBooks() {
   const [coverFile, setCoverFile] = useState(null)
   const [pdfFile, setPdfFile] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState('')
   const [questionsJson, setQuestionsJson] = useState('[]')
   const [editingQuestions, setEditingQuestions] = useState(null)
 
@@ -26,28 +30,53 @@ export default function AdminBooks() {
     setBooks(data || [])
   }
 
-  const uploadFile = async (bucket, file) => {
+  const uploadFile = async (bucket, file, label) => {
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from(bucket).upload(path, file)
+    setUploadStatus(`Uploading ${label}...`)
+    const { error } = await supabase.storage.from(bucket).upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+    })
     if (error) throw error
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-    return bucket === 'book-pdfs'
-      ? (await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 365)).data.signedUrl
-      : data.publicUrl
+    setUploadProgress(bucket === 'book-pdfs' ? 70 : 40)
+    if (bucket === 'book-covers') {
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return { url: data.publicUrl, path: null }
+    }
+    return { url: `storage://book-pdfs/${path}`, path }
   }
 
   const handleSave = async () => {
     setSaving(true)
+    setUploadProgress(5)
+    setUploadStatus('Preparing upload...')
     try {
       let cover_url = editing?.cover_url || null
       let pdf_url = editing?.pdf_url || null
+      let pdf_storage_path = editing?.pdf_storage_path || null
 
-      if (coverFile) cover_url = await uploadFile('book-covers', coverFile)
-      if (pdfFile) pdf_url = await uploadFile('book-pdfs', pdfFile)
+      if (coverFile) {
+        const result = await uploadFile('book-covers', coverFile, 'cover image')
+        cover_url = result.url
+        setUploadProgress(45)
+      }
+      if (pdfFile) {
+        const result = await uploadFile('book-pdfs', pdfFile, 'PDF')
+        pdf_storage_path = result.path
+        pdf_url = pdf_storage_path
+        setUploadProgress(85)
+      }
 
-      if (!pdf_url && !editing) { alert('PDF is required'); setSaving(false); return }
+      if (!pdf_url && !pdf_storage_path && !editing) {
+        alert('PDF is required — click the upload zone to add one.')
+        setSaving(false)
+        setUploadProgress(0)
+        setUploadStatus('')
+        return
+      }
 
+      setUploadStatus('Saving book details...')
       const payload = {
         title: form.title,
         author: form.author,
@@ -58,7 +87,8 @@ export default function AdminBooks() {
         week_number: Number(form.week_number),
         is_active: form.is_active,
         cover_url,
-        pdf_url,
+        pdf_url: pdf_url || pdf_storage_path,
+        pdf_storage_path,
         comprehension_questions: JSON.parse(questionsJson || '[]'),
       }
 
@@ -72,14 +102,19 @@ export default function AdminBooks() {
         await supabase.from('books').insert(payload)
       }
 
+      setUploadProgress(100)
+      setUploadStatus('Done!')
       setForm(emptyBook)
       setEditing(null)
       setCoverFile(null)
       setPdfFile(null)
       setQuestionsJson('[]')
       loadBooks()
+      setTimeout(() => { setUploadProgress(0); setUploadStatus('') }, 1500)
     } catch (e) {
       alert(e.message)
+      setUploadProgress(0)
+      setUploadStatus('')
     }
     setSaving(false)
   }
@@ -92,6 +127,8 @@ export default function AdminBooks() {
       total_pages: book.total_pages, week_number: book.week_number, is_active: book.is_active,
     })
     setQuestionsJson(JSON.stringify(book.comprehension_questions || [], null, 2))
+    setCoverFile(null)
+    setPdfFile(null)
   }
 
   const handleDelete = async (id) => {
@@ -124,13 +161,13 @@ export default function AdminBooks() {
                   value={form[field]}
                   onChange={(e) => setForm(f => ({ ...f, [field]: e.target.value }))}
                   rows={2}
-                  className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm resize-none"
+                  className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm resize-none focus:border-amber-500/40 focus:outline-none transition-colors"
                 />
               ) : (
                 <input
                   value={form[field]}
                   onChange={(e) => setForm(f => ({ ...f, [field]: e.target.value }))}
-                  className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm"
+                  className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm focus:border-amber-500/40 focus:outline-none transition-colors"
                 />
               )}
             </div>
@@ -138,22 +175,36 @@ export default function AdminBooks() {
           <div>
             <label className="text-xs text-gray-400">Total Pages</label>
             <input type="number" value={form.total_pages} onChange={(e) => setForm(f => ({ ...f, total_pages: e.target.value }))}
-              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm" />
+              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm focus:border-amber-500/40 focus:outline-none transition-colors" />
           </div>
           <div>
             <label className="text-xs text-gray-400">Week Number</label>
             <input type="number" value={form.week_number} onChange={(e) => setForm(f => ({ ...f, week_number: e.target.value }))}
-              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm" />
+              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm focus:border-amber-500/40 focus:outline-none transition-colors" />
           </div>
           <div>
-            <label className="text-xs text-gray-400">Cover Image</label>
-            <input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files[0])}
-              className="w-full mt-1 text-sm text-gray-400" />
+            <FileUploadZone
+              label="Cover Image"
+              hint="JPEG, PNG, or WebP — max 5 MB"
+              accept="image/jpeg,image/png,image/webp"
+              file={coverFile}
+              onFile={setCoverFile}
+              existingUrl={editing?.cover_url}
+              existingLabel="Cover image"
+              variant="image"
+            />
           </div>
           <div>
-            <label className="text-xs text-gray-400">PDF File</label>
-            <input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])}
-              className="w-full mt-1 text-sm text-gray-400" />
+            <FileUploadZone
+              label="PDF File"
+              hint="PDF only — max 50 MB. Required for new books."
+              accept="application/pdf"
+              file={pdfFile}
+              onFile={setPdfFile}
+              existingUrl={editing?.pdf_storage_path || editing?.pdf_url}
+              existingLabel="PDF"
+              variant="pdf"
+            />
           </div>
           <div className="sm:col-span-2 flex items-center gap-2">
             <input type="checkbox" id="active" checked={form.is_active} onChange={(e) => setForm(f => ({ ...f, is_active: e.target.checked }))} />
@@ -166,13 +217,24 @@ export default function AdminBooks() {
               onChange={(e) => setQuestionsJson(e.target.value)}
               rows={4}
               placeholder='[{"page": 10, "id": "q1", "question": "...", "options": ["a","b","c"], "correct": 0}]'
-              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm font-mono resize-none"
+              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm font-mono resize-none focus:border-amber-500/40 focus:outline-none transition-colors"
             />
           </div>
         </div>
+
+        {(saving || uploadProgress > 0) && (
+          <div className="mt-4 space-y-2 animate-fade-in">
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>{uploadStatus || 'Uploading...'}</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <ProgressBar value={uploadProgress} max={100} />
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
           <Button loading={saving} onClick={handleSave}>{editing ? 'Update' : 'Upload'} Book</Button>
-          {editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm(emptyBook) }}>Cancel</Button>}
+          {editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm(emptyBook); setCoverFile(null); setPdfFile(null) }}>Cancel</Button>}
         </div>
       </Card>
 
@@ -182,10 +244,15 @@ export default function AdminBooks() {
           <Card key={book.id} className="flex flex-col sm:flex-row sm:items-center gap-4">
             {book.cover_url && <img src={book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />}
             <div className="flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-serif text-white">{book.title}</p>
                 {book.is_active && <Badge color="amber">Active</Badge>}
                 <Badge color="gray">Week {book.week_number}</Badge>
+                {book.pdf_storage_path ? (
+                  <Badge color="green">PDF on file</Badge>
+                ) : (
+                  <Badge color="red">External PDF</Badge>
+                )}
               </div>
               <p className="text-sm text-text-muted">{book.author} · {book.total_pages} pages</p>
             </div>

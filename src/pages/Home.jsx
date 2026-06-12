@@ -177,7 +177,7 @@ export default function Home() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-amber-400 text-sm">@{ann.users?.biblical_handle || 'steward'}</span>
-                      {ann.pinned && <span className="text-xs text-amber-500">📌 Pinned</span>}
+                      {ann.pinned && <span className="text-xs text-amber-500 font-medium">Pinned</span>}
                       <span className="text-xs text-gray-600 ml-auto">{new Date(ann.created_at).toLocaleDateString()}</span>
                     </div>
                     <h4 className="font-serif text-white mb-2">{ann.title}</h4>

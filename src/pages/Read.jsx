@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 import { supabase } from '../lib/supabase'
+import { resolvePdfUrl } from '../lib/pdfUrl'
 import { useAuth } from '../hooks/useAuth'
 import { useReading } from '../hooks/useReading'
 import { PLAYFUL_MESSAGES } from '../lib/constants'
@@ -11,16 +13,15 @@ import Button from '../components/ui/Button'
 import ComprehensionModal from '../components/reading/ComprehensionModal'
 import MilestoneToast from '../components/reading/MilestoneToast'
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 export default function Read() {
   const { bookId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [book, setBook] = useState(null)
+  const [pdfSrc, setPdfSrc] = useState(null)
+  const [pdfError, setPdfError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [numPages, setNumPages] = useState(null)
@@ -97,6 +98,14 @@ export default function Read() {
       setIsActiveBook(data.is_active)
       setNumPages(data.total_pages)
 
+      try {
+        const url = await resolvePdfUrl(data)
+        setPdfSrc(url)
+        setPdfError(null)
+      } catch (err) {
+        setPdfError(err.message || 'Could not load PDF')
+      }
+
       const { data: prog } = await supabase
         .from('user_book_progress')
         .select('verified_pages')
@@ -155,12 +164,15 @@ export default function Read() {
       <MilestoneToast message={milestone} show={showMilestone} />
 
       <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-border-subtle px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div>
-            <Link to="/home" className="text-sm text-gray-500 hover:text-gray-300">← Home</Link>
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Link to="/home" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Home
+            </Link>
             <h1 className="font-serif text-lg text-white truncate">{book.title}</h1>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <p className="text-amber-400 text-sm font-medium">Page {currentPage} of {totalPages}</p>
             {!isActiveBook && <p className="text-xs text-gray-500">Past book · no points</p>}
           </div>
@@ -173,12 +185,27 @@ export default function Read() {
         className="flex-1 overflow-y-auto px-4 py-6"
       >
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-2xl overflow-hidden">
-          {book.pdf_url && (
+          {pdfError ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" strokeWidth={1.5} />
+              <p className="text-red-400 font-medium mb-2">Could not load PDF</p>
+              <p className="text-gray-500 text-sm max-w-md mx-auto">
+                {pdfError.includes('CORS') || !book.pdf_storage_path
+                  ? 'Ask a steward to upload the PDF via Admin — external links often block the reader.'
+                  : pdfError}
+              </p>
+            </div>
+          ) : pdfSrc ? (
             <Document
-              file={book.pdf_url}
+              file={pdfSrc}
               onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-              loading={<div className="p-20 text-center text-gray-500">Loading pages...</div>}
-              error={<div className="p-20 text-center text-red-500">Could not load PDF. Ask a steward to check the file.</div>}
+              loading={<div className="p-20 text-center text-gray-500 animate-pulse">Loading pages...</div>}
+              error={
+                <div className="p-12 text-center">
+                  <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" strokeWidth={1.5} />
+                  <p className="text-red-400">Could not render PDF. Ask a steward to re-upload the file.</p>
+                </div>
+              }
             >
               <Page
                 pageNumber={currentPage}
@@ -187,6 +214,8 @@ export default function Read() {
                 renderAnnotationLayer
               />
             </Document>
+          ) : (
+            <div className="p-20 text-center text-gray-500 animate-pulse">Preparing document...</div>
           )}
         </div>
       </div>

@@ -33,6 +33,7 @@ create table public.books (
   verse_of_week text,
   cover_url text,
   pdf_url text not null,
+  pdf_storage_path text,
   total_pages int not null check (total_pages > 0),
   week_number int not null,
   comprehension_questions jsonb not null default '[]'::jsonb,
@@ -89,6 +90,14 @@ create table public.review_likes (
   unique (review_id, user_id)
 );
 
+create table public.review_comments (
+  id uuid primary key default gen_random_uuid(),
+  review_id uuid not null references public.reviews(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  content text not null check (char_length(trim(content)) > 0),
+  created_at timestamptz not null default now()
+);
+
 create table public.announcements (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -126,6 +135,8 @@ create index idx_books_active on public.books (is_active) where is_active = true
 create index idx_reading_sessions_user_book on public.reading_sessions (user_id, book_id);
 create index idx_reviews_status on public.reviews (status);
 create index idx_reviews_book on public.reviews (book_id);
+create index idx_review_comments_review on public.review_comments (review_id);
+create index idx_review_comments_user on public.review_comments (user_id);
 create index idx_user_book_progress_score on public.user_book_progress (score desc);
 create index idx_announcements_pinned on public.announcements (pinned desc, created_at desc);
 
@@ -323,6 +334,7 @@ alter table public.comprehension_checks enable row level security;
 alter table public.user_book_progress enable row level security;
 alter table public.reviews enable row level security;
 alter table public.review_likes enable row level security;
+alter table public.review_comments enable row level security;
 alter table public.announcements enable row level security;
 alter table public.reading_plans enable row level security;
 alter table public.reflections enable row level security;
@@ -556,7 +568,7 @@ values
 insert into public.announcements (title, body, pinned)
 values
 (
-  'Welcome to the Summer Reading Challenge! 📖',
+  'Welcome to the Summer Reading Challenge!',
   'There is a seat at the table for every one of you. Pick up this week''s book, set your daily goal, and let''s walk this journey together. We''re so glad you''re here.',
   true
 ),

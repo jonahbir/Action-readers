@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Library, BookOpen, Users, Flame } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { FELLOWSHIP_NAME, TAGLINE } from '../lib/constants'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
+import Logo from '../components/ui/Logo'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import ReviewCard from '../components/reviews/ReviewCard'
 import Footer from '../components/layout/Footer'
+
+const STEPS = [
+  { Icon: Library, title: "Pick the Week's Book", desc: 'Each week brings a new read chosen for our fellowship journey.' },
+  { Icon: BookOpen, title: 'Read & Reflect', desc: 'Turn pages at your pace, pause to reflect, and grow in understanding.' },
+  { Icon: Users, title: 'Encourage One Another', desc: 'Share reviews, cheer each other on, and walk this path together.' },
+]
 
 export default function Landing() {
   const { session, signInWithGoogle, loading: authLoading, needsOnboarding, authError, clearAuthError } = useAuth()
@@ -62,16 +70,18 @@ export default function Landing() {
 
   return (
     <div className="page-enter">
-      {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent pointer-events-none" />
+        <div className="absolute top-20 left-1/4 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none animate-float" />
         <div className="max-w-4xl mx-auto px-4 pt-20 pb-24 text-center relative">
-          <div className="text-5xl mb-6">📖</div>
-          <h1 className="font-serif text-4xl md:text-6xl font-bold text-white mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6 animate-fade-in">
+            <Logo className="w-10 h-10 text-amber-400" strokeWidth={1.25} />
+          </div>
+          <h1 className="font-serif text-4xl md:text-6xl font-bold text-white mb-4 animate-fade-in stagger-1">
             {FELLOWSHIP_NAME}
           </h1>
-          <p className="text-xl text-amber-400/90 font-serif mb-3">{TAGLINE}</p>
-          <p className="text-text-muted max-w-lg mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-amber-400/90 font-serif mb-3 animate-fade-in stagger-2">{TAGLINE}</p>
+          <p className="text-text-muted max-w-lg mx-auto mb-10 leading-relaxed animate-fade-in stagger-3">
             A warm table, good books, and a family walking in faith together.
             There&apos;s a seat waiting for you.
           </p>
@@ -82,7 +92,7 @@ export default function Landing() {
               <button type="button" onClick={clearAuthError} className="mt-2 text-xs underline text-red-400">Dismiss</button>
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in stagger-4">
             <Button size="lg" onClick={signInWithGoogle}>Sign in with Google</Button>
             <Button size="lg" variant="outline" onClick={() => document.getElementById('this-week')?.scrollIntoView({ behavior: 'smooth' })}>
               See This Week&apos;s Book
@@ -91,17 +101,14 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How It Works */}
       <section className="max-w-5xl mx-auto px-4 py-16">
         <h2 className="font-serif text-2xl text-center text-amber-400 mb-10">How It Works</h2>
         <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: '📚', title: 'Pick the Week\'s Book', desc: 'Each week brings a new read chosen for our fellowship journey.' },
-            { icon: '📖', title: 'Read & Reflect', desc: 'Turn pages at your pace, pause to reflect, and grow in understanding.' },
-            { icon: '🤝', title: 'Encourage One Another', desc: 'Share reviews, cheer each other on, and walk this path together.' },
-          ].map(({ icon, title, desc }) => (
-            <Card key={title} className="text-center">
-              <div className="text-3xl mb-3">{icon}</div>
+          {STEPS.map(({ Icon, title, desc }, i) => (
+            <Card key={title} className={`text-center hover-lift animate-fade-in stagger-${i + 1}`}>
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
+                <Icon className="w-6 h-6 text-amber-400" strokeWidth={1.5} />
+              </div>
               <h3 className="font-serif text-lg text-white mb-2">{title}</h3>
               <p className="text-text-muted text-sm leading-relaxed">{desc}</p>
             </Card>
@@ -109,11 +116,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* This Week's Book */}
       <section id="this-week" className="max-w-4xl mx-auto px-4 py-16">
         <h2 className="font-serif text-2xl text-center text-amber-400 mb-8">This Week&apos;s Book</h2>
         {loading ? <SkeletonCard className="max-w-2xl mx-auto" /> : activeBook ? (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-2xl mx-auto hover-lift">
             <div className="flex flex-col sm:flex-row gap-6">
               {activeBook.cover_url && (
                 <img src={activeBook.cover_url} alt={activeBook.title} className="w-36 h-52 object-cover rounded-xl mx-auto sm:mx-0 shrink-0 shadow-lg" />
@@ -138,7 +144,6 @@ export default function Landing() {
         )}
       </section>
 
-      {/* Community Reviews Preview */}
       <section className="max-w-5xl mx-auto px-4 py-16">
         <h2 className="font-serif text-2xl text-center text-amber-400 mb-8">What the Family Is Saying</h2>
         {loading ? (
@@ -148,8 +153,8 @@ export default function Landing() {
         ) : reviews.length > 0 ? (
           <div className="grid md:grid-cols-3 gap-4">
             {reviews.map(r => (
-              <div key={r.id} onClick={handleReviewClick}>
-                <ReviewCard review={r} />
+              <div key={r.id} onClick={handleReviewClick} className="cursor-pointer">
+                <ReviewCard review={r} showComments={false} />
               </div>
             ))}
           </div>
@@ -158,12 +163,12 @@ export default function Landing() {
         )}
       </section>
 
-      {/* Footer CTA */}
       <section className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="font-serif text-xl text-gray-300 mb-6">
-          There&apos;s a seat at the table for you. 🕯️
+        <p className="font-serif text-xl text-gray-300 mb-2 flex items-center justify-center gap-2">
+          <Flame className="w-5 h-5 text-amber-500/70" strokeWidth={1.5} />
+          There&apos;s a seat at the table for you.
         </p>
-        <Button size="lg" onClick={signInWithGoogle}>Sign in with Google</Button>
+        <Button size="lg" onClick={signInWithGoogle} className="mt-4">Sign in with Google</Button>
       </section>
 
       <Footer />

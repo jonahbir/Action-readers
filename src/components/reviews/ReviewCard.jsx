@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { Heart } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import Card from '../ui/Card'
 import StarRating from '../ui/StarRating'
+import ReviewComments from './ReviewComments'
 
-export default function ReviewCard({ review, onUpdate, showBook = true }) {
+export default function ReviewCard({ review, onUpdate, showBook = true, showComments = true }) {
   const { user, isAdmin } = useAuth()
   const [likes, setLikes] = useState(review.like_count || 0)
   const [liked, setLiked] = useState(review.user_liked || false)
@@ -63,10 +65,11 @@ export default function ReviewCard({ review, onUpdate, showBook = true }) {
             isOwn ? 'text-gray-600 cursor-not-allowed' : liked ? 'text-red-400' : 'text-gray-400 hover:text-red-400'
           }`}
         >
-          {liked ? '❤️' : '🤍'} {likes}
+          <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} strokeWidth={1.5} />
+          {likes}
         </button>
         {isOwn && (
-          <button onClick={handleDelete} className="text-xs text-gray-500 hover:text-red-400">
+          <button onClick={handleDelete} className="text-xs text-gray-500 hover:text-red-400 transition-colors">
             Delete
           </button>
         )}
@@ -74,6 +77,9 @@ export default function ReviewCard({ review, onUpdate, showBook = true }) {
           <span className="text-xs text-amber-500/70">Pending approval</span>
         )}
       </div>
+      {showComments && user && (
+        <ReviewComments reviewId={review.id} compact />
+      )}
     </Card>
   )
 }

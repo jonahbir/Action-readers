@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { HandHeart, HelpCircle, Smile, Sparkles, Flame } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { BIBLICAL_HANDLE_SUGGESTIONS, PLAYFUL_MESSAGES, FELLOWSHIP_NAME } from '../../lib/constants'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
+const StepIcon = ({ children }) => (
+  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-4">
+    {children}
+  </div>
+)
 
 export default function Onboarding() {
   const { profile, refreshProfile } = useAuth()
@@ -73,7 +79,7 @@ export default function Onboarding() {
         {step === 1 && (
           <>
             <div className="text-center mb-6">
-              <div className="text-4xl mb-3">🙌</div>
+              <StepIcon><HandHeart className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
               <h1 className="font-serif text-2xl text-amber-400 mb-2">Welcome to {FELLOWSHIP_NAME}</h1>
               <p className="text-text-muted">
                 There&apos;s a seat at the table with your name on it. Well — your <em>biblical</em> name.
@@ -86,7 +92,7 @@ export default function Onboarding() {
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.replace(/^@/, ''))}
                 placeholder="Ruth"
-                className="w-full bg-surface-overlay border border-border-subtle rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+                className="w-full bg-surface-overlay border border-border-subtle rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:border-amber-500/50 transition-colors"
               />
             </div>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -109,18 +115,18 @@ export default function Onboarding() {
 
         {step === 2 && !showJoke && (
           <div className="text-center">
-            <div className="text-4xl mb-4">🤔</div>
+            <StepIcon><HelpCircle className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
             <h2 className="font-serif text-xl mb-6">{PLAYFUL_MESSAGES.handleConfirm}</h2>
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-3 justify-center flex-wrap">
               <Button variant="secondary" onClick={() => setStep(1)}>Wait, let me change it</Button>
-              <Button onClick={handleYesClick}>Yes, absolutely! 😇</Button>
+              <Button onClick={handleYesClick}>Yes, absolutely!</Button>
             </div>
           </div>
         )}
 
         {step === 2 && showJoke && (
           <div className="text-center page-enter">
-            <div className="text-4xl mb-4">😄</div>
+            <StepIcon><Smile className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
             <p className="text-lg text-amber-300 leading-relaxed">{PLAYFUL_MESSAGES.handleJoke}</p>
           </div>
         )}
@@ -128,7 +134,7 @@ export default function Onboarding() {
         {step === 3 && (
           <>
             <div className="text-center mb-6">
-              <div className="text-4xl mb-3">✨</div>
+              <StepIcon><Sparkles className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
               <h2 className="font-serif text-xl text-amber-400">Almost there, @{handle.trim()}</h2>
               <p className="text-text-muted text-sm mt-2">Tell the family a little about yourself (optional)</p>
             </div>
@@ -137,11 +143,14 @@ export default function Onboarding() {
               onChange={(e) => setBio(e.target.value)}
               placeholder="Why did you join the reading challenge?"
               rows={3}
-              className="w-full bg-surface-overlay border border-border-subtle rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 mb-4 resize-none"
+              className="w-full bg-surface-overlay border border-border-subtle rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 mb-4 resize-none transition-colors"
             />
             {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
             <Button className="w-full" loading={loading} onClick={handleComplete}>
-              Enter the Fellowship 🕯️
+              <span className="flex items-center justify-center gap-2">
+                <Flame className="w-4 h-4" strokeWidth={1.5} />
+                Enter the Fellowship
+              </span>
             </Button>
           </>
         )}
