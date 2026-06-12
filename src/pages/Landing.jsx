@@ -10,7 +10,7 @@ import ReviewCard from '../components/reviews/ReviewCard'
 import Footer from '../components/layout/Footer'
 
 export default function Landing() {
-  const { session, signInWithGoogle, loading: authLoading, needsOnboarding } = useAuth()
+  const { session, signInWithGoogle, loading: authLoading, needsOnboarding, authError, clearAuthError } = useAuth()
   const navigate = useNavigate()
   const [activeBook, setActiveBook] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -75,6 +75,13 @@ export default function Landing() {
             A warm table, good books, and a family walking in faith together.
             There&apos;s a seat waiting for you.
           </p>
+          {authError && (
+            <div className="mb-6 mx-auto max-w-md rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <p className="font-medium">Sign-in didn&apos;t complete</p>
+              <p className="mt-1 text-red-300/80">{authError}</p>
+              <button type="button" onClick={clearAuthError} className="mt-2 text-xs underline text-red-400">Dismiss</button>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={signInWithGoogle}>Sign in with Google</Button>
             <Button size="lg" variant="outline" onClick={() => document.getElementById('this-week')?.scrollIntoView({ behavior: 'smooth' })}>
