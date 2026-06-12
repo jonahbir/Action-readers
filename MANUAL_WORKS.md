@@ -126,30 +126,18 @@ After your **first Google sign-in**:
 
 ## Step 8: Deploy to Vercel
 
-1. Push this project to a **GitHub repository** (create one on github.com, then):
+> **Full deploy guide:** see `DEPLOY.md` in this folder.
+
+Git is already initialized and committed. You only need to:
+
+1. Create a GitHub repo and push:
    ```bash
    cd "/home/jonah-bi/Desktop/Action team"
-   git init
-   git add .
-   git commit -m "Initial fellowship readers platform"
    git remote add origin https://github.com/YOUR-USERNAME/fellowship-readers.git
    git push -u origin main
    ```
-2. Go to [https://vercel.com](https://vercel.com) → **Add New Project** → import your GitHub repo.
-3. Framework preset: **Vite**.
-4. Add **Environment Variables**:
-   - `VITE_SUPABASE_URL` = your Supabase URL
-   - `VITE_SUPABASE_ANON_KEY` = your anon key
-5. Click **Deploy**.
-6. Copy your Vercel URL (e.g. `https://fellowship-readers.vercel.app`).
-
-### After deploy
-
-1. In Supabase **Authentication → URL Configuration**, add your Vercel URL to **Redirect URLs**:
-   ```
-   https://your-app.vercel.app/**
-   ```
-2. Update **Site URL** to your production URL when going live.
+2. [vercel.com](https://vercel.com) → **Add New Project** → import repo → add env vars from your `.env` → **Deploy**.
+3. Supabase → **Authentication → URL Configuration** → add `https://your-app.vercel.app/**` to Redirect URLs and set Site URL.
 
 ---
 
