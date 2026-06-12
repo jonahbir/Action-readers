@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { saveBookProgress } from '../lib/progress'
 import { useAuth } from './useAuth'
 
 export function useProgress(bookId) {
@@ -22,14 +23,14 @@ export function useProgress(bookId) {
   useEffect(() => { fetchProgress() }, [fetchProgress])
 
   const updateProgress = async (updates) => {
-    if (!user || !bookId) return
-    const payload = { user_id: user.id, book_id: bookId, ...updates, last_read_at: new Date().toISOString() }
-    const { data, error } = await supabase
-      .from('user_book_progress')
-      .upsert(payload, { onConflict: 'user_id,book_id' })
-      .select()
-      .single()
-    if (!error) setProgress(data)
+    if (!user || !bookId) return { error: new Error('Not signed in') }
+    const { data, error } = await saveBookProgress({
+      userId: user.id,
+      bookId,
+      verifiedPages: updates.verified_pages,
+      addTimeSeconds: updates.total_time_seconds,
+    })
+    if (!error && data) setProgress(data)
     return { data, error }
   }
 

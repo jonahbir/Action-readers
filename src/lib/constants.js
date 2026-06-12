@@ -14,6 +14,7 @@ export const PLAYFUL_MESSAGES = {
   reviewSubmitted: 'Thanks! An admin will check it soon.',
   graceDay: 'Missed a day? You get one free pass per week.',
   firstPage: 'Page one.',
+  caughtNotFollowing: (answer) => `See, caught you! You are not following! The answer was ${answer}. hhh`,
 }
 
 export const OFFLINE_READING_NOTICE =

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, LogOut } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useAdminCounts } from '../../hooks/useAdminCounts'
 import Avatar from '../ui/Avatar'
 import Button from '../ui/Button'
 import Logo from '../ui/Logo'
@@ -9,6 +10,7 @@ import { APP_NAME } from '../../lib/constants'
 
 export default function Navbar() {
   const { session, profile, signInWithGoogle, signOut, isAdmin } = useAuth()
+  const { total: adminAttentionCount } = useAdminCounts({ enabled: isAdmin })
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -17,7 +19,7 @@ export default function Navbar() {
         { to: '/home', label: 'Home' },
         { to: '/reviews', label: 'Reviews' },
         { to: '/profile', label: 'Profile' },
-        ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
+        ...(isAdmin ? [{ to: '/admin', label: 'Admin', badge: adminAttentionCount }] : []),
       ]
     : []
 
@@ -44,9 +46,14 @@ export default function Navbar() {
           <>
             {/* Desktop nav */}
             <div className="hidden lg:flex items-center gap-1">
-              {links.map(({ to, label }) => (
-                <Link key={to} to={to} className={linkClass(to).replace('block ', '')}>
+              {links.map(({ to, label, badge }) => (
+                <Link key={to} to={to} className={`${linkClass(to).replace('block ', '')} relative inline-flex items-center gap-1.5`}>
                   {label}
+                  {badge > 0 && (
+                    <span className="min-w-4 h-4 px-1 rounded-full bg-amber-500 text-gray-900 text-[10px] font-bold flex items-center justify-center tabular-nums">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -87,9 +94,14 @@ export default function Navbar() {
       {session && menuOpen && (
         <div className="lg:hidden border-t border-border-subtle bg-surface/98 backdrop-blur-md animate-slide-down">
           <div className="max-w-6xl mx-auto px-4 py-3 space-y-1">
-            {links.map(({ to, label }) => (
-              <Link key={to} to={to} className={linkClass(to)} onClick={() => setMenuOpen(false)}>
-                {label}
+            {links.map(({ to, label, badge }) => (
+              <Link key={to} to={to} className={`${linkClass(to)} flex items-center justify-between`} onClick={() => setMenuOpen(false)}>
+                <span>{label}</span>
+                {badge > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-amber-500 text-gray-900 text-xs font-bold flex items-center justify-center tabular-nums">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
               </Link>
             ))}
             <div className="pt-2 mt-2 border-t border-border-subtle flex items-center justify-between px-4 py-2">

@@ -1,57 +1,68 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
-/** Passive reading timer — tracks time on the current page without blocking navigation. */
+/** Live reading timer with millisecond display; pauses when tab is hidden. */
 export function useReading(book, currentPage) {
-  const [timeElapsed, setTimeElapsed] = useState(0)
+  const [displayMs, setDisplayMs] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const timerRef = useRef(null)
-  const idleRef = useRef(null)
-  const lastActivity = useRef(Date.now())
+  const startedAt = useRef(null)
+  const pausedAccum = useRef(0)
+  const pauseStarted = useRef(null)
+  const rafRef = useRef(null)
 
   useEffect(() => {
-    setTimeElapsed(0)
+    startedAt.current = performance.now()
+    pausedAccum.current = 0
+    pauseStarted.current = null
+    setDisplayMs(0)
+    setIsPaused(false)
   }, [currentPage])
 
-  const resetIdleTimer = useCallback(() => {
-    lastActivity.current = Date.now()
-    if (isPaused) setIsPaused(false)
-    clearTimeout(idleRef.current)
-    idleRef.current = setTimeout(() => setIsPaused(true), 120000)
+  const tick = useCallback(() => {
+    if (!startedAt.current || isPaused) return
+    const elapsed = performance.now() - startedAt.current - pausedAccum.current
+    setDisplayMs(Math.max(0, elapsed))
+    rafRef.current = requestAnimationFrame(tick)
   }, [isPaused])
 
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) setIsPaused(true)
-      else resetIdleTimer()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('mousemove', resetIdleTimer)
-    window.addEventListener('keydown', resetIdleTimer)
-    window.addEventListener('scroll', resetIdleTimer)
-    resetIdleTimer()
+    rafRef.current = requestAnimationFrame(tick)
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('mousemove', resetIdleTimer)
-      window.removeEventListener('keydown', resetIdleTimer)
-      window.removeEventListener('scroll', resetIdleTimer)
-      clearTimeout(idleRef.current)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [resetIdleTimer])
+  }, [tick])
 
   useEffect(() => {
-    if (isPaused || !book) {
-      clearInterval(timerRef.current)
-      return
+    const onHide = () => {
+      if (!document.hidden) return
+      if (!pauseStarted.current) pauseStarted.current = performance.now()
+      setIsPaused(true)
     }
-    timerRef.current = setInterval(() => setTimeElapsed(t => t + 1), 1000)
-    return () => clearInterval(timerRef.current)
-  }, [isPaused, book, currentPage])
+    const onShow = () => {
+      if (pauseStarted.current) {
+        pausedAccum.current += performance.now() - pauseStarted.current
+        pauseStarted.current = null
+      }
+      setIsPaused(false)
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) onHide()
+      else onShow()
+    })
+    return () => document.removeEventListener('visibilitychange', () => {})
+  }, [])
+
+  /** Whole seconds elapsed on this page (for DB). */
+  const getElapsedSeconds = useCallback(() => {
+    return Math.floor(displayMs / 1000)
+  }, [displayMs])
 
   const consumeTime = useCallback(() => {
-    const spent = timeElapsed
-    setTimeElapsed(0)
-    return spent
-  }, [timeElapsed])
+    const seconds = getElapsedSeconds()
+    startedAt.current = performance.now()
+    pausedAccum.current = 0
+    setDisplayMs(0)
+    return seconds
+  }, [getElapsedSeconds])
 
-  return { timeElapsed, isPaused, consumeTime }
+  return { displayMs, isPaused, getElapsedSeconds, consumeTime }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookMarked } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { saveBookProgress } from '../../lib/progress'
 import { OFFLINE_READING_NOTICE } from '../../lib/constants'
 import Card from '../ui/Card'
 import Button from '../ui/Button'
@@ -13,6 +14,7 @@ export default function UpdateProgressForm({ userId, onUpdated }) {
   const [currentProgress, setCurrentProgress] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     supabase.from('books').select('id, title, author, total_pages, is_active').order('week_number', { ascending: false })
@@ -26,7 +28,7 @@ export default function UpdateProgressForm({ userId, onUpdated }) {
     }
     supabase
       .from('user_book_progress')
-      .select('verified_pages, total_time_seconds')
+      .select('verified_pages, total_time_seconds, score')
       .eq('user_id', userId)
       .eq('book_id', bookId)
       .maybeSingle()
@@ -41,18 +43,25 @@ export default function UpdateProgressForm({ userId, onUpdated }) {
   const handleSave = async () => {
     if (!bookId || !selectedBook) return
     const pageNum = parseInt(page, 10)
-    if (Number.isNaN(pageNum) || pageNum < 0) return
+    if (Number.isNaN(pageNum) || pageNum < 1) {
+      setError('Enter a page number of at least 1.')
+      return
+    }
     const verified = Math.min(pageNum, selectedBook.total_pages)
     setSaving(true)
-    await supabase.from('user_book_progress').upsert({
-      user_id: userId,
-      book_id: bookId,
-      verified_pages: verified,
-      total_time_seconds: currentProgress?.total_time_seconds || 0,
-      last_read_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,book_id' })
+    setError('')
+    const { error: saveError } = await saveBookProgress({
+      userId,
+      bookId,
+      verifiedPages: verified,
+    })
     setSaving(false)
+    if (saveError) {
+      setError(saveError.message || 'Could not save. Try again.')
+      return
+    }
     setSaved(true)
+    setCurrentProgress(prev => ({ ...prev, verified_pages: verified }))
     onUpdated?.()
     setTimeout(() => setSaved(false), 2500)
   }
@@ -86,11 +95,11 @@ export default function UpdateProgressForm({ userId, onUpdated }) {
           <>
             <div>
               <label className="text-sm text-gray-300 block mb-1">
-                What page are you on? (max {selectedBook.total_pages})
+                What page are you on? (1–{selectedBook.total_pages})
               </label>
               <input
                 type="number"
-                min={0}
+                min={1}
                 max={selectedBook.total_pages}
                 value={page}
                 onChange={(e) => setPage(e.target.value)}
@@ -100,18 +109,23 @@ export default function UpdateProgressForm({ userId, onUpdated }) {
             <ProgressBar
               value={parseInt(page, 10) || currentProgress?.verified_pages || 0}
               max={selectedBook.total_pages}
-              label="Progress after save"
+              label="Your progress"
             />
+            {currentProgress?.score != null && (
+              <p className="text-xs text-text-muted">Current score: {currentProgress.score}</p>
+            )}
           </>
         )}
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
 
         <Button
           onClick={handleSave}
           loading={saving}
-          disabled={!bookId || page === ''}
+          disabled={!bookId || !page}
           className="w-full sm:w-auto"
         >
-          {saved ? 'Progress saved' : 'Save progress'}
+          {saved ? 'Saved!' : 'Save progress'}
         </Button>
       </div>
     </Card>

@@ -5,13 +5,14 @@ import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import FileUploadZone from '../ui/FileUploadZone'
 import ProgressBar from '../ui/ProgressBar'
+import ComprehensionQuestionEditor from './ComprehensionQuestionEditor'
 
 const emptyBook = {
   title: '', author: '', description: '', why_this_book: '', verse_of_week: '',
   total_pages: '', week_number: '', is_active: false, comprehension_questions: '[]',
 }
 
-export default function AdminBooks() {
+export default function AdminBooks({ onAdminAction }) {
   const [books, setBooks] = useState([])
   const [form, setForm] = useState(emptyBook)
   const [editing, setEditing] = useState(null)
@@ -20,8 +21,7 @@ export default function AdminBooks() {
   const [saving, setSaving] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState('')
-  const [questionsJson, setQuestionsJson] = useState('[]')
-  const [editingQuestions, setEditingQuestions] = useState(null)
+  const [comprehensionQuestions, setComprehensionQuestions] = useState([])
 
   useEffect(() => { loadBooks() }, [])
 
@@ -89,7 +89,7 @@ export default function AdminBooks() {
         cover_url,
         pdf_url: pdf_url || pdf_storage_path,
         pdf_storage_path,
-        comprehension_questions: JSON.parse(questionsJson || '[]'),
+        comprehension_questions: comprehensionQuestions,
       }
 
       if (form.is_active) {
@@ -108,8 +108,9 @@ export default function AdminBooks() {
       setEditing(null)
       setCoverFile(null)
       setPdfFile(null)
-      setQuestionsJson('[]')
+      setComprehensionQuestions([])
       loadBooks()
+      onAdminAction?.()
       setTimeout(() => { setUploadProgress(0); setUploadStatus('') }, 1500)
     } catch (e) {
       alert(e.message)
@@ -126,7 +127,7 @@ export default function AdminBooks() {
       why_this_book: book.why_this_book || '', verse_of_week: book.verse_of_week || '',
       total_pages: book.total_pages, week_number: book.week_number, is_active: book.is_active,
     })
-    setQuestionsJson(JSON.stringify(book.comprehension_questions || [], null, 2))
+    setComprehensionQuestions(book.comprehension_questions || [])
     setCoverFile(null)
     setPdfFile(null)
   }
@@ -135,17 +136,6 @@ export default function AdminBooks() {
     if (!confirm('Delete this book?')) return
     await supabase.from('books').delete().eq('id', id)
     loadBooks()
-  }
-
-  const saveQuestions = async () => {
-    try {
-      const parsed = JSON.parse(questionsJson)
-      await supabase.from('books').update({ comprehension_questions: parsed }).eq('id', editingQuestions)
-      setEditingQuestions(null)
-      loadBooks()
-    } catch {
-      alert('Invalid JSON')
-    }
   }
 
   return (
@@ -210,16 +200,10 @@ export default function AdminBooks() {
             <input type="checkbox" id="active" checked={form.is_active} onChange={(e) => setForm(f => ({ ...f, is_active: e.target.checked }))} />
             <label htmlFor="active" className="text-sm text-gray-300">Set as active book of the week</label>
           </div>
-          <div className="sm:col-span-2">
-            <label className="text-xs text-gray-400">Comprehension Questions (JSON)</label>
-            <textarea
-              value={questionsJson}
-              onChange={(e) => setQuestionsJson(e.target.value)}
-              rows={4}
-              placeholder='[{"page": 10, "id": "q1", "question": "...", "options": ["a","b","c"], "correct": 0}]'
-              className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-3 py-2 text-white text-sm font-mono resize-none focus:border-amber-500/40 focus:outline-none transition-colors"
-            />
-          </div>
+          <ComprehensionQuestionEditor
+            questions={comprehensionQuestions}
+            onChange={setComprehensionQuestions}
+          />
         </div>
 
         {(saving || uploadProgress > 0) && (
@@ -234,7 +218,7 @@ export default function AdminBooks() {
 
         <div className="flex gap-2 mt-4">
           <Button loading={saving} onClick={handleSave}>{editing ? 'Update' : 'Upload'} Book</Button>
-          {editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm(emptyBook); setCoverFile(null); setPdfFile(null) }}>Cancel</Button>}
+          {editing && <Button variant="ghost" onClick={() => { setEditing(null); setForm(emptyBook); setCoverFile(null); setPdfFile(null); setComprehensionQuestions([]) }}>Cancel</Button>}
         </div>
       </Card>
 

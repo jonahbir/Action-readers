@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, Download, Info } from 'lucide-react'
+import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 import { supabase } from '../lib/supabase'
 import { resolvePdfUrl } from '../lib/pdfUrl'
 import { downloadBookPdf } from '../lib/downloadBook'
+import { addReadingTime, logReadingSession, saveBookProgress } from '../lib/progress'
+import { formatLiveTime } from '../lib/timeFormat'
 import { useAuth } from '../hooks/useAuth'
 import { useReading } from '../hooks/useReading'
 import { PLAYFUL_MESSAGES } from '../lib/constants'
@@ -14,13 +16,27 @@ import Button from '../components/ui/Button'
 import BookDetailModal from '../components/books/BookDetailModal'
 import DownloadBookModal from '../components/books/DownloadBookModal'
 import ComprehensionModal from '../components/reading/ComprehensionModal'
+import PdfPageSidebar from '../components/reading/PdfPageSidebar'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+
+function useIsMobile(breakpoint = 768) {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint)
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const fn = () => setMobile(mq.matches)
+    fn()
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [breakpoint])
+  return mobile
+}
 
 export default function Read() {
   const { bookId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   const [book, setBook] = useState(null)
   const [pdfSrc, setPdfSrc] = useState(null)
   const [pdfError, setPdfError] = useState(null)
@@ -33,34 +49,32 @@ export default function Read() {
   const [showDetails, setShowDetails] = useState(false)
   const [showDownload, setShowDownload] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const pageContainerRef = useRef(null)
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
   const askedPages = useRef(new Set())
   const prevPageRef = useRef(null)
+  const sessionTimeRef = useRef(0)
 
-  const { timeElapsed, isPaused, consumeTime } = useReading(book, currentPage)
+  const { displayMs, isPaused, getElapsedSeconds, consumeTime } = useReading(book, currentPage)
 
-  const logPageTime = useCallback(async (pageNum, seconds) => {
-    if (!user || !book || seconds < 3) return
-    await supabase.from('reading_sessions').insert({
-      user_id: user.id,
-      book_id: book.id,
-      page_number: pageNum,
-      time_spent_seconds: seconds,
-      scroll_completed: true,
+  useEffect(() => {
+    setSidebarOpen(!isMobile)
+  }, [isMobile])
+
+  const flushTime = useCallback(async (pageNum, seconds, alsoSyncPage) => {
+    if (!user || !book || !pageNum) return
+    if (seconds >= 1) {
+      sessionTimeRef.current += seconds
+      await addReadingTime(user.id, book.id, seconds, pageNum)
+    }
+    if (alsoSyncPage) {
+      await saveBookProgress({ userId: user.id, bookId: book.id, verifiedPages: alsoSyncPage })
+    }
+    await logReadingSession({
+      userId: user.id,
+      bookId: book.id,
+      pageNumber: pageNum,
+      timeSpentSeconds: Math.max(seconds || 0, 0),
     })
-    const { data: existing } = await supabase
-      .from('user_book_progress')
-      .select('verified_pages, total_time_seconds')
-      .eq('user_id', user.id)
-      .eq('book_id', book.id)
-      .maybeSingle()
-    await supabase.from('user_book_progress').upsert({
-      user_id: user.id,
-      book_id: book.id,
-      verified_pages: existing?.verified_pages ?? 0,
-      total_time_seconds: (existing?.total_time_seconds || 0) + seconds,
-      last_read_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,book_id' })
   }, [user, book])
 
   const goToPage = useCallback((page) => {
@@ -68,13 +82,12 @@ export default function Read() {
     const next = Math.min(Math.max(1, page), total)
     setCurrentPage(next)
     setPageInput(String(next))
-    pageContainerRef.current?.scrollTo(0, 0)
   }, [numPages, book])
 
   useEffect(() => {
     if (prevPageRef.current !== null && prevPageRef.current !== currentPage) {
       const spent = consumeTime()
-      logPageTime(prevPageRef.current, spent)
+      flushTime(prevPageRef.current, spent, currentPage)
     }
     prevPageRef.current = currentPage
 
@@ -85,23 +98,34 @@ export default function Read() {
       setCompQuestion(q)
       setShowComp(true)
     }
-  }, [currentPage, book, consumeTime, logPageTime])
+  }, [currentPage, book, consumeTime, flushTime])
+
+  useEffect(() => {
+    if (!user || !book) return
+    const interval = setInterval(() => {
+      const secs = getElapsedSeconds()
+      if (secs >= 15) {
+        const flushed = consumeTime()
+        flushTime(currentPage, flushed)
+      }
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user, book, currentPage, getElapsedSeconds, consumeTime, flushTime])
 
   useEffect(() => {
     return () => {
-      if (prevPageRef.current !== null) {
+      if (prevPageRef.current !== null && user && book) {
         const spent = consumeTime()
-        logPageTime(prevPageRef.current, spent)
+        flushTime(prevPageRef.current, spent)
       }
     }
-  }, [consumeTime, logPageTime])
+  }, [consumeTime, flushTime, user, book])
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from('books').select('*').eq('id', bookId).single()
       if (!data) { navigate('/home'); return }
       setBook(data)
-      setNumPages(data.total_pages)
 
       try {
         const url = await resolvePdfUrl(data)
@@ -118,11 +142,10 @@ export default function Read() {
         .eq('book_id', bookId)
         .maybeSingle()
 
-      const startPage = Math.min((prog?.verified_pages || 0) + 1, data.total_pages)
-      const page = startPage || 1
-      setCurrentPage(page)
-      setPageInput(String(page))
-      prevPageRef.current = page
+      const startPage = Math.min(Math.max((prog?.verified_pages || 0), 1), data.total_pages)
+      setCurrentPage(startPage)
+      setPageInput(String(startPage))
+      prevPageRef.current = startPage
       setLoading(false)
     }
     load()
@@ -168,11 +191,12 @@ export default function Read() {
   }
 
   const totalPages = numPages || book.total_pages
+  const liveMs = Math.floor(displayMs % 1000)
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-border-subtle px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-border-subtle px-4 py-3 shrink-0">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <Link to="/home" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -190,71 +214,75 @@ export default function Read() {
             <Button size="sm" variant="ghost" onClick={handleDownload} title="Download PDF">
               <Download className="w-4 h-4" />
             </Button>
-            <p className="text-amber-400 text-sm font-medium hidden sm:block">
-              Page {currentPage} / {totalPages}
+            <p className="text-amber-400 text-sm font-medium">
+              {currentPage} / {totalPages}
             </p>
           </div>
         </div>
       </header>
 
-      <div ref={pageContainerRef} className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-2xl overflow-hidden">
-          {pdfError ? (
-            <div className="p-12 text-center">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {pdfSrc && !pdfError && (
+          <Document
+            file={pdfSrc}
+            onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+            loading={null}
+            className="flex flex-1 min-h-0 w-full"
+          >
+            <PdfPageSidebar
+              numPages={totalPages}
+              currentPage={currentPage}
+              onSelectPage={goToPage}
+              open={sidebarOpen}
+              onToggle={setSidebarOpen}
+              isMobile={isMobile}
+            />
+            <div className="flex-1 overflow-y-auto p-4 bg-surface-overlay/30">
+              <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-2xl overflow-hidden">
+                <Page
+                  pageNumber={currentPage}
+                  width={Math.min(isMobile ? window.innerWidth - 32 : window.innerWidth - (sidebarOpen ? 280 : 120), 800)}
+                  renderTextLayer
+                  renderAnnotationLayer
+                  loading={<div className="p-20 text-center text-gray-500 animate-pulse">Loading page...</div>}
+                />
+              </div>
+            </div>
+          </Document>
+        )}
+
+        {pdfError && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center">
               <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" strokeWidth={1.5} />
               <p className="text-red-400 font-medium mb-2">Could not load PDF</p>
-              <p className="text-gray-500 text-sm max-w-md mx-auto">
+              <p className="text-gray-500 text-sm max-w-md">
                 {pdfError.includes('CORS') || !book.pdf_storage_path
-                  ? 'Ask an admin to upload the PDF. External links often do not work here.'
+                  ? 'Ask an admin to upload the PDF.'
                   : pdfError}
               </p>
             </div>
-          ) : pdfSrc ? (
-            <Document
-              file={pdfSrc}
-              onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-              loading={<div className="p-20 text-center text-gray-500 animate-pulse">Loading pages...</div>}
-              error={
-                <div className="p-12 text-center">
-                  <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" strokeWidth={1.5} />
-                  <p className="text-red-400">Could not show the PDF. Ask an admin to upload it again.</p>
-                </div>
-              }
-            >
-              <Page
-                pageNumber={currentPage}
-                width={Math.min(window.innerWidth - 48, 700)}
-                renderTextLayer
-                renderAnnotationLayer
-              />
-            </Document>
-          ) : (
-            <div className="p-20 text-center text-gray-500 animate-pulse">Preparing document...</div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {!pdfSrc && !pdfError && (
+          <div className="flex-1 flex items-center justify-center text-gray-500 animate-pulse">Preparing document...</div>
+        )}
       </div>
 
-      <footer className="sticky bottom-0 bg-surface/95 backdrop-blur border-t border-border-subtle px-4 py-4">
-        <div className="max-w-4xl mx-auto space-y-3">
-          <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
-            <Info className="w-3.5 h-3.5 text-amber-500/60" strokeWidth={1.5} />
-            <span>
-              {isPaused ? PLAYFUL_MESSAGES.idlePause : `On this page: ${timeElapsed}s`}
-            </span>
-          </div>
+      <footer className="sticky bottom-0 bg-surface/95 backdrop-blur border-t border-border-subtle px-4 py-3 shrink-0">
+        <div className="max-w-5xl mx-auto space-y-2">
+          <p className="text-center font-mono text-sm text-amber-400 tabular-nums">
+            {isPaused ? PLAYFUL_MESSAGES.idlePause : formatLiveTime(getElapsedSeconds(), liveMs)}
+            {!isPaused && <span className="text-text-muted text-xs ml-2">(this page)</span>}
+          </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={currentPage <= 1}
-                onClick={() => goToPage(currentPage - 1)}
-                aria-label="Previous page"
-              >
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+              <Button variant="secondary" size="sm" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-center">
+              <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
@@ -267,17 +295,10 @@ export default function Read() {
                 <span className="text-sm text-gray-500">/ {totalPages}</span>
                 <Button size="sm" variant="ghost" onClick={handlePageInputGo}>Go</Button>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={currentPage >= totalPages}
-                onClick={() => goToPage(currentPage + 1)}
-                aria-label="Next page"
-              >
+              <Button variant="secondary" size="sm" disabled={currentPage >= totalPages} onClick={() => goToPage(currentPage + 1)}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-
             <input
               type="range"
               min={1}
@@ -285,34 +306,14 @@ export default function Read() {
               value={currentPage}
               onChange={(e) => goToPage(Number(e.target.value))}
               className="w-full sm:w-48 accent-amber-500"
-              aria-label="Page slider"
             />
           </div>
         </div>
       </footer>
 
-      <ComprehensionModal
-        open={showComp}
-        question={compQuestion}
-        onAnswer={handleCompAnswer}
-        onClose={() => { setShowComp(false); setCompQuestion(null) }}
-      />
-
-      <BookDetailModal
-        book={book}
-        open={showDetails}
-        onClose={() => setShowDetails(false)}
-        canDownload
-        onDownload={() => { setShowDetails(false); handleDownload() }}
-      />
-
-      <DownloadBookModal
-        open={showDownload}
-        book={book}
-        onClose={() => setShowDownload(false)}
-        onConfirm={confirmDownload}
-        downloading={downloading}
-      />
+      <ComprehensionModal open={showComp} question={compQuestion} onAnswer={handleCompAnswer} onClose={() => { setShowComp(false); setCompQuestion(null) }} />
+      <BookDetailModal book={book} open={showDetails} onClose={() => setShowDetails(false)} canDownload onDownload={() => { setShowDetails(false); handleDownload() }} />
+      <DownloadBookModal open={showDownload} book={book} onClose={() => setShowDownload(false)} onConfirm={confirmDownload} downloading={downloading} />
     </div>
   )
 }

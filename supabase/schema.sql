@@ -20,6 +20,7 @@ create table public.users (
   role text not null default 'user' check (role in ('user', 'admin', 'super_admin')),
   is_banned boolean not null default false,
   bio text,
+  phone text,
   onboarding_complete boolean not null default false,
   joined_at timestamptz not null default now()
 );

@@ -45,6 +45,7 @@ export default function AdminUsers() {
               <tr className="text-left text-text-muted border-b border-border-subtle">
                 <th className="pb-3 pr-4">Member</th>
                 <th className="pb-3 pr-4">Real Name</th>
+                <th className="pb-3 pr-4">Phone</th>
                 <th className="pb-3 pr-4">Email</th>
                 <th className="pb-3 pr-4">Role</th>
                 <th className="pb-3 pr-4">Joined</th>
@@ -61,6 +62,7 @@ export default function AdminUsers() {
                     </div>
                   </td>
                   <td className="py-3 pr-4 text-gray-300">{u.display_name}</td>
+                  <td className="py-3 pr-4 text-gray-400">{u.phone || '—'}</td>
                   <td className="py-3 pr-4 text-gray-500">{u.email}</td>
                   <td className="py-3 pr-4"><Badge color={roleColor[u.role]}>{u.role}</Badge></td>
                   <td className="py-3 pr-4 text-gray-500">{new Date(u.joined_at).toLocaleDateString()}</td>

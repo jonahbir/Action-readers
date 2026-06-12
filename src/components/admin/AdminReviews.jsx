@@ -6,7 +6,7 @@ import Avatar from '../ui/Avatar'
 import StarRating from '../ui/StarRating'
 import Badge from '../ui/Badge'
 
-export default function AdminReviews() {
+export default function AdminReviews({ onAdminAction }) {
   const [pending, setPending] = useState([])
   const [approved, setApproved] = useState([])
 
@@ -19,6 +19,7 @@ export default function AdminReviews() {
     ])
     setPending(p || [])
     setApproved(a || [])
+    onAdminAction?.()
   }
 
   const updateStatus = async (id, status) => {

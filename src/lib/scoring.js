@@ -1,3 +1,5 @@
+export { formatReadingTime } from './timeFormat'
+
 export function calculateScore(verifiedPages, correctCount, totalChecks) {
   const pageScore = (verifiedPages || 0) * 10
   if (!totalChecks || totalChecks === 0) return pageScore
@@ -8,13 +10,6 @@ export function calculateScore(verifiedPages, correctCount, totalChecks) {
 export function comprehensionAccuracy(correct, total) {
   if (!total) return 0
   return Math.round((correct / total) * 100)
-}
-
-export function formatReadingTime(seconds) {
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${mins}m`
-  return `${mins}m`
 }
 
 export function estimateMinReadTime(wordCount, wpm = 200) {

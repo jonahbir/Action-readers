@@ -30,14 +30,53 @@ export default function Home() {
 
   useEffect(() => {
     loadData()
+  }, [profile])
 
+  useEffect(() => {
     const annChannel = supabase
       .channel('announcements-home')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => loadAnnouncements())
       .subscribe()
-
     return () => { supabase.removeChannel(annChannel) }
   }, [])
+
+  useEffect(() => {
+    if (!profile || !activeBook) return
+
+    const progressChannel = supabase
+      .channel('home-progress')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_book_progress' }, () => loadProgress(activeBook))
+      .subscribe()
+
+    const poll = setInterval(() => loadProgress(activeBook), 2 * 60 * 1000)
+
+    return () => {
+      supabase.removeChannel(progressChannel)
+      clearInterval(poll)
+    }
+  }, [profile, activeBook])
+
+  async function loadProgress(activeBookOverride) {
+    const book = activeBookOverride || activeBook
+    if (!book || !profile) return
+
+    const { data: prog } = await supabase
+      .from('user_book_progress')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('book_id', book.id)
+      .maybeSingle()
+    setProgress(prog)
+
+    const today = new Date().toISOString().split('T')[0]
+    const { data: sessions } = await supabase
+      .from('reading_sessions')
+      .select('user_id, users(biblical_handle, avatar_url)')
+      .eq('book_id', book.id)
+      .gte('created_at', `${today}T00:00:00`)
+    const unique = [...new Map((sessions || []).map(s => [s.user_id, s.users])).values()]
+    setReadingNow(unique.filter(Boolean))
+  }
 
   async function loadAnnouncements() {
     const { data } = await supabase
@@ -57,22 +96,7 @@ export default function Home() {
     setPastBooks(past || [])
 
     if (active && profile) {
-      const { data: prog } = await supabase
-        .from('user_book_progress')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('book_id', active.id)
-        .maybeSingle()
-      setProgress(prog)
-
-      const today = new Date().toISOString().split('T')[0]
-      const { data: sessions } = await supabase
-        .from('reading_sessions')
-        .select('user_id, users(biblical_handle, avatar_url)')
-        .eq('book_id', active.id)
-        .gte('created_at', `${today}T00:00:00`)
-      const unique = [...new Map((sessions || []).map(s => [s.user_id, s.users])).values()]
-      setReadingNow(unique.filter(Boolean))
+      await loadProgress(active)
     }
 
     await loadAnnouncements()

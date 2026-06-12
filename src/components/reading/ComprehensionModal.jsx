@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { BookOpenCheck } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
+import { PLAYFUL_MESSAGES } from '../../lib/constants'
 
 export default function ComprehensionModal({ open, question, onAnswer, onClose }) {
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
 
   if (!question) return null
+
+  const correctAnswer = question.options?.[question.correct] ?? ''
 
   const handleSubmit = () => {
     if (selected === null) return
@@ -18,20 +21,21 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
       setSelected(null)
       setSubmitted(false)
       onClose()
-    }, 1500)
+    }, 2200)
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Quick question" size="md">
       <div className="flex items-center gap-2 text-amber-500/70 mb-4">
         <BookOpenCheck className="w-4 h-4" strokeWidth={1.5} />
-        <span className="text-xs">Comprehension check</span>
+        <span className="text-xs">Page {question.page}</span>
       </div>
       <p className="text-gray-300 mb-5 font-serif">{question.question}</p>
       <div className="space-y-2 mb-6">
         {question.options.map((opt, i) => (
           <button
             key={i}
+            type="button"
             onClick={() => !submitted && setSelected(i)}
             className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
               selected === i
@@ -48,8 +52,10 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
         ))}
       </div>
       {submitted ? (
-        <p className="text-center text-amber-400 text-sm">
-          {selected === question.correct ? 'Correct. Keep reading.' : 'Not quite. Keep reading anyway.'}
+        <p className="text-center text-amber-400 text-sm leading-relaxed">
+          {selected === question.correct
+            ? 'Correct. Keep reading.'
+            : PLAYFUL_MESSAGES.caughtNotFollowing(correctAnswer)}
         </p>
       ) : (
         <Button className="w-full" onClick={handleSubmit} disabled={selected === null}>

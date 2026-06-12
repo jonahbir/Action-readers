@@ -22,7 +22,7 @@ export default function Profile() {
   const [plan, setPlan] = useState(null)
   const [dailyGoal, setDailyGoal] = useState(20)
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ handle: '', bio: '' })
+  const [editForm, setEditForm] = useState({ handle: '', bio: '', phone: '' })
   const [editError, setEditError] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -75,10 +75,12 @@ export default function Profile() {
       const d = new Date(startOfWeek)
       d.setDate(startOfWeek.getDate() + i)
       const key = d.toISOString().split('T')[0]
-      const pages = planData[key] || 0
+      const raw = planData[key]
+      const pages = typeof raw === 'object' ? (raw.pages || 0) : (raw || 0)
+      const seconds = typeof raw === 'object' ? (raw.seconds || 0) : 0
       const met = pages >= dailyGoal
       const isFuture = d > today
-      return { day, key, pages, met, isFuture, isToday: key === today.toISOString().split('T')[0] }
+      return { day, key, pages, seconds, met, isFuture, isToday: key === today.toISOString().split('T')[0] }
     })
   }
 
@@ -93,7 +95,7 @@ export default function Profile() {
   }
 
   const startEdit = () => {
-    setEditForm({ handle: profile.biblical_handle, bio: profile.bio || '' })
+    setEditForm({ handle: profile.biblical_handle, bio: profile.bio || '', phone: profile.phone || '' })
     setEditing(true)
     setEditError('')
   }
@@ -112,9 +114,11 @@ export default function Profile() {
 
     if (taken) { setEditError('Handle already taken'); setSaving(false); return }
 
+    const phone = editForm.phone.trim() || null
     const { error } = await supabase.from('users').update({
       biblical_handle: clean,
       bio: editForm.bio.trim() || null,
+      phone,
     }).eq('id', profile.id)
 
     if (error) { setEditError(error.message); setSaving(false); return }
@@ -135,6 +139,7 @@ export default function Profile() {
           <div className="flex-1 text-center sm:text-left">
             <h1 className="font-serif text-2xl text-amber-400">@{profile.biblical_handle}</h1>
             {profile.bio && <p className="text-gray-400 text-sm mt-1">{profile.bio}</p>}
+            {profile.phone && <p className="text-gray-500 text-sm mt-1">{profile.phone}</p>}
             <p className="text-text-muted text-sm mt-2">
               Joined {new Date(profile.joined_at).toLocaleDateString()} · {stats?.booksRead || 0} books completed
             </p>
@@ -157,6 +162,16 @@ export default function Profile() {
                   className="w-full bg-surface-overlay border border-border-subtle rounded-xl pl-8 pr-4 py-2.5 text-white"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-300">Phone (for weekly mobile card awards)</label>
+              <input
+                type="tel"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+251 9xx xxx xxx"
+                className="w-full mt-1 bg-surface-overlay border border-border-subtle rounded-xl px-4 py-2.5 text-white"
+              />
             </div>
             <div>
               <label className="text-sm text-gray-300">Bio</label>
@@ -216,10 +231,10 @@ export default function Profile() {
           <Button size="sm" onClick={savePlan}>Save Goal</Button>
         </div>
         <div className="grid grid-cols-7 gap-2">
-          {calendar.map(({ day, met, isFuture, isToday, pages }) => (
+          {calendar.map(({ day, met, isFuture, isToday, pages, seconds }) => (
             <div key={day} className="text-center">
               <p className="text-xs text-text-muted mb-1">{day}</p>
-              <div className={`w-full aspect-square rounded-xl flex items-center justify-center text-xs font-medium ${
+              <div className={`w-full aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-medium ${
                 isFuture ? 'bg-surface-overlay text-gray-600' :
                 met ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                 pages > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
@@ -227,6 +242,9 @@ export default function Profile() {
               } ${isToday ? 'ring-2 ring-amber-500/50' : ''}`}>
                 {isFuture ? '·' : met ? '✓' : pages > 0 ? pages : '—'}
               </div>
+              {!isFuture && seconds > 0 && (
+                <p className="text-[10px] text-gray-500 mt-1 tabular-nums">{formatReadingTime(seconds)}</p>
+              )}
             </div>
           ))}
         </div>
