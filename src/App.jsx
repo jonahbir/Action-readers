@@ -20,7 +20,7 @@ function AppRoutes() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
-        <p className="text-amber-400 animate-pulse font-serif">Opening the book...</p>
+        <p className="text-amber-400 animate-pulse font-serif">Loading...</p>
       </div>
     )
   }

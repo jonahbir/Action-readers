@@ -73,8 +73,8 @@ export default function Reviews() {
     <div className="page-enter max-w-6xl mx-auto px-4 py-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-serif text-3xl text-amber-400">Community Reviews</h1>
-          <p className="text-text-muted text-sm mt-1">Honest thoughts from the family table</p>
+          <h1 className="font-serif text-3xl text-amber-400">Reviews</h1>
+          <p className="text-text-muted text-sm mt-1">What the team thought about the books</p>
         </div>
         <Button onClick={() => setShowWrite(true)}>Write a Review</Button>
       </div>
@@ -106,7 +106,7 @@ export default function Reviews() {
           {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
         </div>
       ) : reviews.length === 0 ? (
-        <p className="text-center text-text-muted py-16">No reviews yet — be the first to share!</p>
+        <p className="text-center text-text-muted py-16">No reviews yet.</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {reviews.map(r => <ReviewCard key={r.id} review={r} onUpdate={loadReviews} />)}
@@ -139,13 +139,13 @@ export default function Reviews() {
                 value={form.content}
                 onChange={(e) => setForm(f => ({ ...f, content: e.target.value }))}
                 rows={4}
-                placeholder="What stayed with you?"
+                placeholder="What did you think?"
                 className="w-full bg-surface-overlay border border-border-subtle rounded-xl px-4 py-3 text-white resize-none"
               />
             </div>
             <Button className="w-full" loading={submitting} onClick={handleSubmit}
               disabled={!form.book_id || !form.rating || !form.content.trim()}>
-              Submit for Review
+              Submit review
             </Button>
           </div>
         )}

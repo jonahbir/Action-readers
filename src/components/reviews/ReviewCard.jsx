@@ -44,7 +44,7 @@ export default function ReviewCard({ review, onUpdate, showBook = true, showComm
       <div className="flex items-start gap-3 mb-3">
         <Avatar src={author?.avatar_url} handle={author?.biblical_handle} />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-amber-400">@{author?.biblical_handle || 'fellowship-member'}</p>
+          <p className="font-medium text-amber-400">@{author?.biblical_handle || 'reader'}</p>
           {showBook && book && (
             <p className="text-sm text-text-muted font-serif truncate">{book.title}</p>
           )}

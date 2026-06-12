@@ -37,7 +37,7 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <h3 className="font-serif text-lg text-white mb-4">Fellowship Members</h3>
+      <h3 className="font-serif text-lg text-white mb-4">Team members</h3>
       {loading ? <p className="text-text-muted">Loading...</p> : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">

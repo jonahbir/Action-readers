@@ -22,7 +22,7 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Quick pause to reflect" size="md">
+    <Modal open={open} onClose={onClose} title="Quick question" size="md">
       <div className="flex items-center gap-2 text-amber-500/70 mb-4">
         <BookOpenCheck className="w-4 h-4" strokeWidth={1.5} />
         <span className="text-xs">Comprehension check</span>
@@ -49,7 +49,7 @@ export default function ComprehensionModal({ open, question, onAnswer, onClose }
       </div>
       {submitted ? (
         <p className="text-center text-amber-400 text-sm">
-          {selected === question.correct ? 'Well done! Keep walking.' : 'No worries — grace covers us. Keep reading!'}
+          {selected === question.correct ? 'Correct. Keep reading.' : 'Not quite. Keep reading anyway.'}
         </p>
       ) : (
         <Button className="w-full" onClick={handleSubmit} disabled={selected === null}>

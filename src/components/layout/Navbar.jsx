@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import Button from '../ui/Button'
 import Logo from '../ui/Logo'
-import { FELLOWSHIP_NAME } from '../../lib/constants'
+import { APP_NAME } from '../../lib/constants'
 
 export default function Navbar() {
   const { session, profile, signInWithGoogle, signOut, isAdmin } = useAuth()
@@ -37,7 +37,7 @@ export default function Navbar() {
           onClick={() => setMenuOpen(false)}
         >
           <Logo />
-          <span className="font-serif font-bold text-amber-400 truncate">{FELLOWSHIP_NAME}</span>
+          <span className="font-serif font-bold text-amber-400 truncate">{APP_NAME}</span>
         </Link>
 
         {session && (

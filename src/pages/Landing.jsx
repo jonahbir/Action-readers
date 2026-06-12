@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Library, BookOpen, Users, Flame } from 'lucide-react'
+import { Library, BookOpen, Users, Flame, Info } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { FELLOWSHIP_NAME, TAGLINE } from '../lib/constants'
+import { APP_NAME, TAGLINE } from '../lib/constants'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Logo from '../components/ui/Logo'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import ReviewCard from '../components/reviews/ReviewCard'
 import Footer from '../components/layout/Footer'
+import BookDetailModal from '../components/books/BookDetailModal'
 
 const STEPS = [
-  { Icon: Library, title: "Pick the Week's Book", desc: 'Each week brings a new read chosen for our fellowship journey.' },
-  { Icon: BookOpen, title: 'Read & Reflect', desc: 'Turn pages at your pace, pause to reflect, and grow in understanding.' },
-  { Icon: Users, title: 'Encourage One Another', desc: 'Share reviews, cheer each other on, and walk this path together.' },
+  { Icon: Library, title: "This week's book", desc: 'Admins pick a book each week. Everyone reads the same one.' },
+  { Icon: BookOpen, title: 'Read here or offline', desc: 'Read in the browser, or download the PDF and read on your own.' },
+  { Icon: Users, title: 'Share what you think', desc: 'Post a short review and comment on what others wrote.' },
 ]
 
 export default function Landing() {
@@ -23,6 +24,7 @@ export default function Landing() {
   const [activeBook, setActiveBook] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [detailBook, setDetailBook] = useState(null)
 
   useEffect(() => {
     if (authLoading || !session) return
@@ -78,12 +80,12 @@ export default function Landing() {
             <Logo className="w-10 h-10 text-amber-400" strokeWidth={1.25} />
           </div>
           <h1 className="font-serif text-4xl md:text-6xl font-bold text-white mb-4 animate-fade-in stagger-1">
-            {FELLOWSHIP_NAME}
+            {APP_NAME}
           </h1>
           <p className="text-xl text-amber-400/90 font-serif mb-3 animate-fade-in stagger-2">{TAGLINE}</p>
           <p className="text-text-muted max-w-lg mx-auto mb-10 leading-relaxed animate-fade-in stagger-3">
-            A warm table, good books, and a family walking in faith together.
-            There&apos;s a seat waiting for you.
+            The Action Family team reads together over the summer.
+            Sign in with Google to join.
           </p>
           {authError && (
             <div className="mb-6 mx-auto max-w-md rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -135,7 +137,15 @@ export default function Landing() {
                   <p className="text-xs text-amber-500/70 mb-4">{activeBook.verse_of_week}</p>
                 )}
                 <p className="text-sm text-text-muted mb-4">{activeBook.total_pages} pages · Week {activeBook.week_number}</p>
-                <Button onClick={handleStartReading}>Start Reading</Button>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={handleStartReading}>Start Reading</Button>
+                  <Button variant="outline" onClick={() => setDetailBook(activeBook)}>
+                    <span className="flex items-center gap-2">
+                      <Info className="w-4 h-4" strokeWidth={1.5} />
+                      Book details
+                    </span>
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
@@ -145,7 +155,7 @@ export default function Landing() {
       </section>
 
       <section className="max-w-5xl mx-auto px-4 py-16">
-        <h2 className="font-serif text-2xl text-center text-amber-400 mb-8">What the Family Is Saying</h2>
+        <h2 className="font-serif text-2xl text-center text-amber-400 mb-8">What people are saying</h2>
         {loading ? (
           <div className="grid md:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
@@ -159,19 +169,26 @@ export default function Landing() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-text-muted">Be the first to share a review after reading!</p>
+          <p className="text-center text-text-muted">No reviews yet. Be the first.</p>
         )}
       </section>
 
       <section className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="font-serif text-xl text-gray-300 mb-2 flex items-center justify-center gap-2">
           <Flame className="w-5 h-5 text-amber-500/70" strokeWidth={1.5} />
-          There&apos;s a seat at the table for you.
+          Ready to read with us?
         </p>
         <Button size="lg" onClick={signInWithGoogle} className="mt-4">Sign in with Google</Button>
       </section>
 
       <Footer />
+
+      <BookDetailModal
+        book={detailBook}
+        open={!!detailBook}
+        onClose={() => setDetailBook(null)}
+        canDownload={false}
+      />
     </div>
   )
 }

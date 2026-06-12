@@ -58,7 +58,7 @@ export default function AdminLeaderboard() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-serif text-lg text-white">Faithful Readers</h3>
+        <h3 className="font-serif text-lg text-white">Leaderboard</h3>
         <select
           value={bookFilter}
           onChange={(e) => setBookFilter(e.target.value)}

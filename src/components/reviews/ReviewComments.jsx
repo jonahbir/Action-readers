@@ -79,7 +79,7 @@ export default function ReviewComments({ reviewId, compact = false }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-amber-400/90">
-                          @{author?.biblical_handle || 'fellowship-member'}
+                          @{author?.biblical_handle || 'reader'}
                         </span>
                         <span className="text-[10px] text-gray-600">
                           {new Date(c.created_at).toLocaleDateString()}
@@ -110,7 +110,7 @@ export default function ReviewComments({ reviewId, compact = false }) {
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Encourage a fellow reader..."
+                placeholder="Write a comment..."
                 rows={2}
                 className="flex-1 bg-surface border border-border-subtle rounded-lg px-3 py-2 text-sm text-white resize-none focus:border-amber-500/50 focus:outline-none transition-colors"
               />

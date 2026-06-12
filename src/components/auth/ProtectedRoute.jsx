@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-amber-400 animate-pulse font-serif text-lg">Opening the book...</div>
+        <div className="text-amber-400 animate-pulse font-serif text-lg">Loading...</div>
       </div>
     )
   }

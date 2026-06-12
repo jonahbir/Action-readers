@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Info } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { PLAYFUL_MESSAGES } from '../lib/constants'
+import { downloadBookPdf } from '../lib/downloadBook'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
 import ProgressBar from '../components/ui/ProgressBar'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import ReviewCard from '../components/reviews/ReviewCard'
+import BookDetailModal from '../components/books/BookDetailModal'
+import DownloadBookModal from '../components/books/DownloadBookModal'
 
 export default function Home() {
   const { profile } = useAuth()
@@ -20,6 +24,9 @@ export default function Home() {
   const [readingNow, setReadingNow] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviewSort, setReviewSort] = useState('liked')
+  const [detailBook, setDetailBook] = useState(null)
+  const [downloadBook, setDownloadBook] = useState(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -100,6 +107,20 @@ export default function Home() {
   const verifiedPages = progress?.verified_pages || 0
   const hasStarted = verifiedPages > 0
 
+  const requestDownload = (book) => setDownloadBook(book)
+
+  const confirmDownload = async () => {
+    if (!downloadBook) return
+    setDownloading(true)
+    try {
+      await downloadBookPdf(downloadBook)
+      setDownloadBook(null)
+    } catch (e) {
+      alert(e.message)
+    }
+    setDownloading(false)
+  }
+
   return (
     <div className="page-enter max-w-6xl mx-auto px-4 py-8">
       <p className="text-text-muted text-sm mb-6">
@@ -123,7 +144,7 @@ export default function Home() {
               <ProgressBar
                 value={verifiedPages}
                 max={activeBook.total_pages}
-                label="Your verified progress"
+                label="Your progress"
                 className="mb-4"
               />
               {readingNow.length > 0 && (
@@ -136,9 +157,17 @@ export default function Home() {
                   <span className="text-xs text-text-muted">{readingNow.length} reading today</span>
                 </div>
               )}
-              <Link to={`/read/${activeBook.id}`}>
-                <Button>{hasStarted ? 'Continue Reading' : 'Start Reading'}</Button>
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <Link to={`/read/${activeBook.id}`}>
+                  <Button>{hasStarted ? 'Continue Reading' : 'Start Reading'}</Button>
+                </Link>
+                <Button variant="outline" onClick={() => setDetailBook(activeBook)}>
+                  <span className="flex items-center gap-2">
+                    <Info className="w-4 h-4" strokeWidth={1.5} />
+                    Book details
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -153,10 +182,15 @@ export default function Home() {
               <Card key={book.id} className="w-44 shrink-0 text-center">
                 {book.cover_url && <img src={book.cover_url} alt="" className="w-24 h-32 object-cover rounded-lg mx-auto mb-3" />}
                 <p className="font-serif text-sm text-white truncate">{book.title}</p>
-                <p className="text-xs text-text-muted mb-3">No points · read for joy</p>
-                <Link to={`/read/${book.id}`}>
-                  <Button size="sm" variant="secondary" className="w-full">Read Again</Button>
-                </Link>
+                <p className="text-xs text-text-muted mb-3">Past week — no score</p>
+                <div className="flex flex-col gap-2">
+                  <Link to={`/read/${book.id}`}>
+                    <Button size="sm" variant="secondary" className="w-full">Read Again</Button>
+                  </Link>
+                  <Button size="sm" variant="ghost" className="w-full" onClick={() => setDetailBook(book)}>
+                    Details
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>
@@ -176,7 +210,7 @@ export default function Home() {
                   <Avatar src={ann.users?.avatar_url} handle={ann.users?.biblical_handle || 'admin'} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-amber-400 text-sm">@{ann.users?.biblical_handle || 'steward'}</span>
+                      <span className="text-amber-400 text-sm">@{ann.users?.biblical_handle || 'admin'}</span>
                       {ann.pinned && <span className="text-xs text-amber-500 font-medium">Pinned</span>}
                       <span className="text-xs text-gray-600 ml-auto">{new Date(ann.created_at).toLocaleDateString()}</span>
                     </div>
@@ -194,7 +228,7 @@ export default function Home() {
       {/* Community Reviews */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif text-lg text-amber-400">Community Reviews</h3>
+          <h3 className="font-serif text-lg text-amber-400">Reviews</h3>
           <div className="flex gap-2">
             {['liked', 'recent'].map(s => (
               <button
@@ -222,6 +256,22 @@ export default function Home() {
           <Link to="/reviews"><Button variant="outline">See All Reviews</Button></Link>
         </div>
       </section>
+
+      <BookDetailModal
+        book={detailBook}
+        open={!!detailBook}
+        onClose={() => setDetailBook(null)}
+        canDownload
+        onDownload={(book) => { setDetailBook(null); requestDownload(book) }}
+      />
+
+      <DownloadBookModal
+        open={!!downloadBook}
+        book={downloadBook}
+        onClose={() => setDownloadBook(null)}
+        onConfirm={confirmDownload}
+        downloading={downloading}
+      />
     </div>
   )
 }

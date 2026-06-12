@@ -1,42 +1,28 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from './useAuth'
-import { estimateMinReadTime, estimateWordsPerPage } from '../lib/scoring'
 
-export function useReading(book, currentPage, onPageComplete) {
-  const { user } = useAuth()
-  const [scrolledToBottom, setScrolledToBottom] = useState(false)
+/** Passive reading timer — tracks time on the current page without blocking navigation. */
+export function useReading(book, currentPage) {
   const [timeElapsed, setTimeElapsed] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [minTimeRequired, setMinTimeRequired] = useState(30)
   const timerRef = useRef(null)
   const idleRef = useRef(null)
-  const tabSwitchCount = useRef(0)
   const lastActivity = useRef(Date.now())
 
   useEffect(() => {
-    if (!book) return
-    const wordsPerPage = estimateWordsPerPage(book.total_pages)
-    setMinTimeRequired(estimateMinReadTime(wordsPerPage))
     setTimeElapsed(0)
-    setScrolledToBottom(false)
-  }, [book, currentPage])
+  }, [currentPage])
 
   const resetIdleTimer = useCallback(() => {
     lastActivity.current = Date.now()
     if (isPaused) setIsPaused(false)
     clearTimeout(idleRef.current)
-    idleRef.current = setTimeout(() => setIsPaused(true), 60000)
+    idleRef.current = setTimeout(() => setIsPaused(true), 120000)
   }, [isPaused])
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden) {
-        tabSwitchCount.current += 1
-        if (tabSwitchCount.current > 3) setIsPaused(true)
-      } else {
-        resetIdleTimer()
-      }
+      if (document.hidden) setIsPaused(true)
+      else resetIdleTimer()
     }
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('mousemove', resetIdleTimer)
@@ -53,38 +39,19 @@ export function useReading(book, currentPage, onPageComplete) {
   }, [resetIdleTimer])
 
   useEffect(() => {
-    if (isPaused) {
+    if (isPaused || !book) {
       clearInterval(timerRef.current)
       return
     }
     timerRef.current = setInterval(() => setTimeElapsed(t => t + 1), 1000)
     return () => clearInterval(timerRef.current)
-  }, [isPaused, currentPage])
+  }, [isPaused, book, currentPage])
 
-  const canProceed = scrolledToBottom && timeElapsed >= minTimeRequired
-
-  const completePage = async () => {
-    if (!user || !book || !canProceed) return
-    const { error } = await supabase.from('reading_sessions').insert({
-      user_id: user.id,
-      book_id: book.id,
-      page_number: currentPage,
-      time_spent_seconds: timeElapsed,
-      scroll_completed: true,
-    })
-    if (!error) onPageComplete?.(currentPage, timeElapsed)
-    setScrolledToBottom(false)
+  const consumeTime = useCallback(() => {
+    const spent = timeElapsed
     setTimeElapsed(0)
-    tabSwitchCount.current = 0
-  }
+    return spent
+  }, [timeElapsed])
 
-  return {
-    scrolledToBottom,
-    setScrolledToBottom,
-    timeElapsed,
-    minTimeRequired,
-    isPaused,
-    canProceed,
-    completePage,
-  }
+  return { timeElapsed, isPaused, consumeTime }
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { HandHeart, HelpCircle, Smile, Sparkles, Flame } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { BIBLICAL_HANDLE_SUGGESTIONS, PLAYFUL_MESSAGES, FELLOWSHIP_NAME } from '../../lib/constants'
+import { BIBLICAL_HANDLE_SUGGESTIONS, PLAYFUL_MESSAGES, APP_NAME } from '../../lib/constants'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 const StepIcon = ({ children }) => (
@@ -80,9 +80,9 @@ export default function Onboarding() {
           <>
             <div className="text-center mb-6">
               <StepIcon><HandHeart className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
-              <h1 className="font-serif text-2xl text-amber-400 mb-2">Welcome to {FELLOWSHIP_NAME}</h1>
+              <h1 className="font-serif text-2xl text-amber-400 mb-2">Welcome to {APP_NAME}</h1>
               <p className="text-text-muted">
-                There&apos;s a seat at the table with your name on it. Well — your <em>biblical</em> name.
+                Pick a handle for the site — like @Ruth or @David. That is how people will know you.
               </p>
             </div>
             <label className="block text-sm text-gray-300 mb-2">Choose your biblical handle</label>
@@ -136,7 +136,7 @@ export default function Onboarding() {
             <div className="text-center mb-6">
               <StepIcon><Sparkles className="w-7 h-7 text-amber-400" strokeWidth={1.5} /></StepIcon>
               <h2 className="font-serif text-xl text-amber-400">Almost there, @{handle.trim()}</h2>
-              <p className="text-text-muted text-sm mt-2">Tell the family a little about yourself (optional)</p>
+              <p className="text-text-muted text-sm mt-2">Short bio if you want (optional)</p>
             </div>
             <textarea
               value={bio}
@@ -149,7 +149,7 @@ export default function Onboarding() {
             <Button className="w-full" loading={loading} onClick={handleComplete}>
               <span className="flex items-center justify-center gap-2">
                 <Flame className="w-4 h-4" strokeWidth={1.5} />
-                Enter the Fellowship
+                Join the team
               </span>
             </Button>
           </>

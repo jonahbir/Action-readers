@@ -9,6 +9,7 @@ import Avatar from '../components/ui/Avatar'
 import ProgressBar from '../components/ui/ProgressBar'
 import ReviewCard from '../components/reviews/ReviewCard'
 import SkeletonCard from '../components/ui/SkeletonCard'
+import UpdateProgressForm from '../components/profile/UpdateProgressForm'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -198,6 +199,8 @@ export default function Profile() {
           />
         </Card>
       )}
+
+      <UpdateProgressForm userId={profile.id} onUpdated={loadAll} />
 
       <Card className="mb-8">
         <h3 className="font-serif text-lg text-white mb-4">Daily Reading Plan</h3>

@@ -22,7 +22,7 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface">
-      <p className="text-amber-400 animate-pulse font-serif">Welcome back — opening the book...</p>
+      <p className="text-amber-400 animate-pulse font-serif">Signing you in...</p>
     </div>
   )
 }

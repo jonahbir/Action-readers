@@ -21,7 +21,7 @@ export default function Admin() {
 
   return (
     <div className="page-enter max-w-7xl mx-auto px-4 py-8">
-      <h1 className="font-serif text-3xl text-amber-400 mb-8">Stewardship Panel</h1>
+      <h1 className="font-serif text-3xl text-amber-400 mb-8">Admin</h1>
       <div className="flex flex-col md:flex-row gap-6">
         <AdminSidebar activeTab={tab} onTabChange={setTab} />
         <div className="flex-1 min-w-0">
