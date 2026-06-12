@@ -3,24 +3,22 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-function getOAuthParams() {
+function readOAuthError() {
   const url = new URL(window.location.href)
-  const fromQuery = {
-    code: url.searchParams.get('code'),
-    error: url.searchParams.get('error_description') || url.searchParams.get('error'),
-  }
-  if (fromQuery.code || fromQuery.error) return fromQuery
+  const err =
+    url.searchParams.get('error_description') ||
+    url.searchParams.get('error')
+  if (err) return decodeURIComponent(err.replace(/\+/g, ' '))
 
-  // Legacy implicit flow hash tokens
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+  if (!hash) return null
   const hashParams = new URLSearchParams(hash)
-  return {
-    code: hashParams.get('code'),
-    error: hashParams.get('error_description') || hashParams.get('error'),
-  }
+  const hashErr = hashParams.get('error_description') || hashParams.get('error')
+  return hashErr ? decodeURIComponent(hashErr.replace(/\+/g, ' ')) : null
 }
 
 function cleanOAuthFromUrl() {
+  if (!window.location.search && !window.location.hash) return
   window.history.replaceState({}, document.title, window.location.pathname)
 }
 
@@ -53,32 +51,30 @@ export function AuthProvider({ children }) {
     let mounted = true
 
     async function initAuth() {
-      const { code, error: oauthError } = getOAuthParams()
-
+      const oauthError = readOAuthError()
       if (oauthError) {
         if (mounted) {
-          setAuthError(decodeURIComponent(oauthError.replace(/\+/g, ' ')))
+          setAuthError(oauthError)
           setLoading(false)
         }
         cleanOAuthFromUrl()
         return
       }
 
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        cleanOAuthFromUrl()
-        if (exchangeError) {
-          console.error('OAuth code exchange failed:', exchangeError)
-          if (mounted) {
-            setAuthError(exchangeError.message || 'Sign-in failed. Please try again.')
-            setLoading(false)
-          }
-          return
-        }
-      }
+      // Single call — Supabase exchanges ?code= via PKCE using authStorage (cookies + localStorage).
+      // Do NOT also call exchangeCodeForSession() manually (that causes double-exchange bugs).
+      const { data: { session: s }, error } = await supabase.auth.getSession()
 
-      const { data: { session: s } } = await supabase.auth.getSession()
+      cleanOAuthFromUrl()
+
       if (!mounted) return
+
+      if (error) {
+        console.error('Auth session error:', error)
+        setAuthError(error.message)
+        setLoading(false)
+        return
+      }
 
       setSession(s)
       if (s?.user) {
@@ -92,12 +88,12 @@ export function AuthProvider({ children }) {
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      if (!mounted) return
-      if (event === 'INITIAL_SESSION') return
+      if (!mounted || event === 'INITIAL_SESSION') return
 
       setSession(s)
       if (s?.user) {
         await fetchProfile(s.user.id)
+        setAuthError(null)
       } else {
         setProfile(null)
       }
@@ -112,11 +108,10 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = async () => {
     setAuthError(null)
-    const redirectTo = `${window.location.origin}/`
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo,
+        redirectTo: `${window.location.origin}/`,
         queryParams: { prompt: 'select_account' },
       },
     })
