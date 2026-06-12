@@ -26,12 +26,14 @@ git push -u origin main
 1. Go to [vercel.com](https://vercel.com) → Sign in (use GitHub).
 2. **Add New Project** → Import `fellowship-readers`.
 3. Framework: **Vite** (auto-detected).
-4. **Environment Variables** — add both:
+4. **Environment Variables** — add both (paste **only the value**, not the `NAME=` part):
 
-   | Name | Value |
+   | Name | Value (example — use yours from `.env`) |
    |------|--------|
-   | `VITE_SUPABASE_URL` | Copy from your local `.env` |
-   | `VITE_SUPABASE_ANON_KEY` | Copy from your local `.env` |
+   | `VITE_SUPABASE_URL` | `https://xxxxx.supabase.co` |
+   | `VITE_SUPABASE_ANON_KEY` | `sb_publishable_...` or `eyJhbGci...` |
+
+   **Common mistake:** putting `VITE_SUPABASE_ANON_KEY=sb_publishable_...` in the Value field. Vercel already has the name — the value must be **only** the key string.
 
 5. Click **Deploy**.
 6. Wait ~1–2 minutes. Copy your live URL (e.g. `https://fellowship-readers.vercel.app`).
@@ -99,6 +101,7 @@ git push
 | Issue | Fix |
 |-------|-----|
 | Blank page on Vercel | Env vars missing in Vercel project settings → Redeploy |
+| Book/reviews empty + login loops on live URL | `VITE_SUPABASE_ANON_KEY` value likely includes `VITE_SUPABASE_ANON_KEY=` prefix — fix in Vercel → **Redeploy** |
 | Google sign-in fails on live URL | Add Vercel URL to Supabase Redirect URLs |
 | 404 on `/home` refresh | `vercel.json` rewrites are already configured ✓ |
 | Build fails | Run `npm run build` locally first to see errors |
