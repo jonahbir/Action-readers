@@ -50,26 +50,33 @@ export default function Read() {
   const [downloading, setDownloading] = useState(false)
   const askedPages = useRef(new Set())
   const prevPageRef = useRef(null)
-  const sessionTimeRef = useRef(0)
+  const consumeTimeRef = useRef(() => 0)
+  const flushTimeRef = useRef(async () => {})
 
-  const { displayMs, isPaused, getElapsedSeconds, consumeTime } = useReading(book, currentPage)
+  const { displayMs, isPaused, getElapsedSeconds, consumeTime } = useReading()
 
   const flushTime = useCallback(async (pageNum, seconds, alsoSyncPage) => {
     if (!user || !book || !pageNum) return
     if (seconds >= 1) {
-      sessionTimeRef.current += seconds
       await addReadingTime(user.id, book.id, seconds, pageNum)
     }
     if (alsoSyncPage) {
       await saveBookProgress({ userId: user.id, bookId: book.id, verifiedPages: alsoSyncPage })
     }
-    await logReadingSession({
-      userId: user.id,
-      bookId: book.id,
-      pageNumber: pageNum,
-      timeSpentSeconds: Math.max(seconds || 0, 0),
-    })
+    if (seconds >= 1) {
+      await logReadingSession({
+        userId: user.id,
+        bookId: book.id,
+        pageNumber: pageNum,
+        timeSpentSeconds: seconds,
+      })
+    }
   }, [user, book])
+
+  useEffect(() => {
+    consumeTimeRef.current = consumeTime
+    flushTimeRef.current = flushTime
+  }, [consumeTime, flushTime])
 
   const goToPage = useCallback((page) => {
     const total = numPages || book?.total_pages || 1
@@ -80,8 +87,8 @@ export default function Read() {
 
   useEffect(() => {
     if (prevPageRef.current !== null && prevPageRef.current !== currentPage) {
-      const spent = consumeTime()
-      flushTime(prevPageRef.current, spent, currentPage)
+      const spent = consumeTimeRef.current()
+      flushTimeRef.current(prevPageRef.current, spent, currentPage)
     }
     prevPageRef.current = currentPage
 
@@ -92,28 +99,29 @@ export default function Read() {
       setCompQuestion(q)
       setShowComp(true)
     }
-  }, [currentPage, book, consumeTime, flushTime])
+  }, [currentPage, book])
 
   useEffect(() => {
     if (!user || !book) return
     const interval = setInterval(() => {
-      const secs = getElapsedSeconds()
-      if (secs >= 15) {
-        const flushed = consumeTime()
-        flushTime(currentPage, flushed)
+      const spent = consumeTimeRef.current()
+      if (spent >= 15) {
+        flushTimeRef.current(currentPage, spent)
       }
     }, 30000)
     return () => clearInterval(interval)
-  }, [user, book, currentPage, getElapsedSeconds, consumeTime, flushTime])
+  }, [user, book, currentPage])
 
   useEffect(() => {
     return () => {
       if (prevPageRef.current !== null && user && book) {
-        const spent = consumeTime()
-        flushTime(prevPageRef.current, spent)
+        const spent = consumeTimeRef.current()
+        if (spent >= 1) {
+          flushTimeRef.current(prevPageRef.current, spent)
+        }
       }
     }
-  }, [consumeTime, flushTime, user, book])
+  }, [user, book])
 
   useEffect(() => {
     async function load() {
@@ -260,7 +268,7 @@ export default function Read() {
         <div className="max-w-5xl mx-auto space-y-2">
           <p className="text-center font-mono text-sm text-amber-400 tabular-nums">
             {isPaused ? PLAYFUL_MESSAGES.idlePause : formatLiveTime(getElapsedSeconds(), liveMs)}
-            {!isPaused && <span className="text-text-muted text-xs ml-2">(this page)</span>}
+            {!isPaused && <span className="text-text-muted text-xs ml-2">(reading)</span>}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

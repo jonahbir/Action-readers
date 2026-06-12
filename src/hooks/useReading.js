@@ -1,69 +1,67 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
-/** Live reading timer with millisecond display; pauses when tab is hidden. */
-export function useReading(book, currentPage) {
+/** Session reading timer — counts from mount, pauses when tab is hidden. */
+export function useReading() {
   const [displayMs, setDisplayMs] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const startedAt = useRef(null)
+  const startedAt = useRef(performance.now())
   const pausedAccum = useRef(0)
   const pauseStarted = useRef(null)
+  const flushedMs = useRef(0)
+  const isPausedRef = useRef(false)
   const rafRef = useRef(null)
 
-  useEffect(() => {
-    startedAt.current = performance.now()
-    pausedAccum.current = 0
-    pauseStarted.current = null
-    setDisplayMs(0)
-    setIsPaused(false)
-  }, [currentPage])
+  const getElapsedMs = useCallback(() => {
+    return Math.max(0, performance.now() - startedAt.current - pausedAccum.current)
+  }, [])
 
-  const tick = useCallback(() => {
-    if (!startedAt.current || isPaused) return
-    const elapsed = performance.now() - startedAt.current - pausedAccum.current
-    setDisplayMs(Math.max(0, elapsed))
-    rafRef.current = requestAnimationFrame(tick)
+  useEffect(() => {
+    isPausedRef.current = isPaused
   }, [isPaused])
 
   useEffect(() => {
+    const tick = () => {
+      if (!isPausedRef.current) {
+        setDisplayMs(getElapsedMs())
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
     rafRef.current = requestAnimationFrame(tick)
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [tick])
+  }, [getElapsedMs])
 
   useEffect(() => {
-    const onHide = () => {
-      if (!document.hidden) return
-      if (!pauseStarted.current) pauseStarted.current = performance.now()
-      setIsPaused(true)
-    }
-    const onShow = () => {
-      if (pauseStarted.current) {
-        pausedAccum.current += performance.now() - pauseStarted.current
-        pauseStarted.current = null
-      }
-      setIsPaused(false)
-    }
     const onVisibilityChange = () => {
-      if (document.hidden) onHide()
-      else onShow()
+      if (document.hidden) {
+        if (!pauseStarted.current) pauseStarted.current = performance.now()
+        isPausedRef.current = true
+        setIsPaused(true)
+      } else {
+        if (pauseStarted.current) {
+          pausedAccum.current += performance.now() - pauseStarted.current
+          pauseStarted.current = null
+        }
+        isPausedRef.current = false
+        setIsPaused(false)
+      }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
-  /** Whole seconds elapsed on this page (for DB). */
   const getElapsedSeconds = useCallback(() => {
-    return Math.floor(displayMs / 1000)
-  }, [displayMs])
+    return Math.floor(getElapsedMs() / 1000)
+  }, [getElapsedMs])
 
+  /** Seconds accumulated since the last flush — does not reset the live display. */
   const consumeTime = useCallback(() => {
-    const seconds = getElapsedSeconds()
-    startedAt.current = performance.now()
-    pausedAccum.current = 0
-    setDisplayMs(0)
-    return seconds
-  }, [getElapsedSeconds])
+    const totalMs = getElapsedMs()
+    const deltaMs = Math.max(0, totalMs - flushedMs.current)
+    flushedMs.current = totalMs
+    return Math.floor(deltaMs / 1000)
+  }, [getElapsedMs])
 
   return { displayMs, isPaused, getElapsedSeconds, consumeTime }
 }

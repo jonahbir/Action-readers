@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminSidebar from '../components/layout/AdminSidebar'
 import AdminBooks from '../components/admin/AdminBooks'
 import AdminAnnouncements from '../components/admin/AdminAnnouncements'
@@ -6,10 +6,18 @@ import AdminLeaderboard from '../components/admin/AdminLeaderboard'
 import AdminUsers from '../components/admin/AdminUsers'
 import AdminReviews from '../components/admin/AdminReviews'
 import { useAdminCounts } from '../hooks/useAdminCounts'
+import { useAuth } from '../hooks/useAuth'
+
+const COUNTED_TABS = new Set(['books', 'users', 'reviews'])
 
 export default function Admin() {
+  const { profile } = useAuth()
   const [tab, setTab] = useState('books')
-  const { counts, total, refresh } = useAdminCounts()
+  const { counts, total, refresh, markSeen } = useAdminCounts({ userId: profile?.id })
+
+  useEffect(() => {
+    if (profile?.id && COUNTED_TABS.has(tab)) markSeen(tab)
+  }, [tab, profile?.id, markSeen])
 
   const panels = {
     books: AdminBooks,
@@ -27,7 +35,7 @@ export default function Admin() {
         <h1 className="font-serif text-3xl text-amber-400">Admin</h1>
         {total > 0 && (
           <span className="text-sm text-amber-400/90 bg-amber-500/10 border border-amber-500/25 px-3 py-1 rounded-full">
-            {total} item{total === 1 ? '' : 's'} need your attention
+            {total} new item{total === 1 ? '' : 's'}
           </span>
         )}
       </div>

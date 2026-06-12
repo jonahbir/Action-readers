@@ -13,6 +13,7 @@ export default function Navbar() {
   const location = useLocation()
   const { total: adminAttentionCount } = useAdminCounts({
     enabled: isAdmin && !location.pathname.startsWith('/admin'),
+    userId: profile?.id,
   })
   const [menuOpen, setMenuOpen] = useState(false)
 
