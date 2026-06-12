@@ -90,51 +90,50 @@ export default function AdminLeaderboard() {
         </select>
       </div>
 
-      {loading ? <SkeletonCard /> : (
-        <Card className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
-            <thead>
-              <tr className="text-left text-text-muted border-b border-border-subtle">
-                <th className="pb-3 pr-4">#</th>
-                <th className="pb-3 pr-4">Handle</th>
-                <th className="pb-3 pr-4">Real name</th>
-                <th className="pb-3 pr-4">Pages</th>
-                <th className="pb-3 pr-4">Time</th>
-                <th className="pb-3 pr-4">Score</th>
-                <th className="pb-3 pr-4">Checks</th>
-                <th className="pb-3">Last active</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rankings.map((r, i) => (
-                <tr key={r.id} className="border-b border-border-subtle/50">
-                  <td className="py-3 pr-4 text-amber-400 font-bold">{i + 1}</td>
-                  <td className="py-3 pr-4">
-                    <div className="flex items-center gap-2">
-                      <Avatar src={r.users?.avatar_url} handle={r.users?.biblical_handle} size="sm" />
-                      <span className="text-amber-400">@{r.users?.biblical_handle}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 pr-4 text-gray-300">{r.users?.display_name || '—'}</td>
-                  <td className="py-3 pr-4">{r.verified_pages}</td>
-                  <td className="py-3 pr-4 text-gray-400">{formatReadingTime(r.total_time_seconds || 0)}</td>
-                  <td className="py-3 pr-4 text-amber-400 font-medium">{r.score}</td>
-                  <td className="py-3 pr-4">{r.comprehensionPct}%</td>
-                  <td className="py-3 text-gray-500 text-xs">
-                    {r.last_read_at ? new Date(r.last_read_at).toLocaleString() : '—'}
-                  </td>
-                </tr>
-              ))}
-              {rankings.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-text-muted">
-                    No progress yet. Readers show up after they save a page count.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {loading ? <SkeletonCard /> : rankings.length === 0 ? (
+        <Card>
+          <p className="py-8 text-center text-text-muted text-sm">
+            No progress yet. Readers show up after they save a page count.
+          </p>
         </Card>
+      ) : (
+        <div className="space-y-2">
+          {rankings.map((r, i) => (
+            <Card key={r.id} className="!p-4">
+              <div className="flex gap-3">
+                <p className="text-amber-400 font-bold text-lg w-7 shrink-0 pt-0.5">{i + 1}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Avatar src={r.users?.avatar_url} handle={r.users?.biblical_handle} size="sm" />
+                    <p className="text-amber-400 font-medium truncate">@{r.users?.biblical_handle}</p>
+                  </div>
+                  <p className="text-gray-300 text-sm mb-3">{r.users?.display_name || '—'}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-text-muted text-xs">Pages</p>
+                      <p className="text-white font-medium">{r.verified_pages}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted text-xs">Time</p>
+                      <p className="text-gray-300">{formatReadingTime(r.total_time_seconds || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted text-xs">Score</p>
+                      <p className="text-amber-400 font-medium">{r.score}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-muted text-xs">Checks</p>
+                      <p className="text-gray-300">{r.comprehensionPct}%</p>
+                    </div>
+                  </div>
+                  <p className="text-text-muted text-xs mt-3">
+                    Last active: {r.last_read_at ? new Date(r.last_read_at).toLocaleString() : '—'}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )
