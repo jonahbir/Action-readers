@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import BannedScreen from './components/auth/BannedScreen'
 import Onboarding from './components/auth/Onboarding'
+import AuthCallback from './components/auth/AuthCallback'
 import Landing from './pages/Landing'
 import Home from './pages/Home'
 import Read from './pages/Read'
@@ -33,6 +34,7 @@ function AppRoutes() {
       {!hideNav && <Navbar />}
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/suspended" element={<BannedScreen />} />
         <Route path="/onboarding" element={
           session && needsOnboarding ? <Onboarding /> : <Landing />

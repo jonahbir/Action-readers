@@ -40,10 +40,12 @@ git push -u origin main
 
 1. Supabase → **Authentication → URL Configuration**.
 2. **Site URL**: set to your Vercel URL.
-3. **Redirect URLs** — add:
+3. **Redirect URLs** — add all of these:
    ```
    https://YOUR-APP.vercel.app/**
+   https://YOUR-APP.vercel.app/auth/callback
    http://localhost:5173/**
+   http://localhost:5173/auth/callback
    ```
 4. Save.
 

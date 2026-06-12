@@ -10,15 +10,16 @@ import ReviewCard from '../components/reviews/ReviewCard'
 import Footer from '../components/layout/Footer'
 
 export default function Landing() {
-  const { session, signInWithGoogle } = useAuth()
+  const { session, signInWithGoogle, loading: authLoading, needsOnboarding } = useAuth()
   const navigate = useNavigate()
   const [activeBook, setActiveBook] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session) navigate('/home')
-  }, [session, navigate])
+    if (authLoading || !session) return
+    navigate(needsOnboarding ? '/onboarding' : '/home', { replace: true })
+  }, [session, authLoading, needsOnboarding, navigate])
 
   useEffect(() => {
     async function load() {
