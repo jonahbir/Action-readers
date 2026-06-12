@@ -2,17 +2,13 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
-// OAuth is handled globally in AuthContext. This route just waits for session then redirects.
+// Legacy route — redirect to home once session is ready (implicit flow lands on / anyway)
 export default function AuthCallback() {
   const navigate = useNavigate()
-  const { session, loading, needsOnboarding, isBanned, authError } = useAuth()
+  const { session, loading, needsOnboarding, isBanned } = useAuth()
 
   useEffect(() => {
     if (loading) return
-    if (authError) {
-      navigate('/', { replace: true })
-      return
-    }
     if (!session) {
       navigate('/', { replace: true })
       return
@@ -22,7 +18,7 @@ export default function AuthCallback() {
       return
     }
     navigate(needsOnboarding ? '/onboarding' : '/home', { replace: true })
-  }, [loading, session, needsOnboarding, isBanned, authError, navigate])
+  }, [loading, session, needsOnboarding, isBanned, navigate])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface">

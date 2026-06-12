@@ -5,21 +5,18 @@ const AuthContext = createContext(null)
 
 function readOAuthError() {
   const url = new URL(window.location.href)
-  const err =
+  const fromQuery =
     url.searchParams.get('error_description') ||
     url.searchParams.get('error')
-  if (err) return decodeURIComponent(err.replace(/\+/g, ' '))
+  if (fromQuery) return decodeURIComponent(fromQuery.replace(/\+/g, ' '))
 
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
   if (!hash) return null
   const hashParams = new URLSearchParams(hash)
-  const hashErr = hashParams.get('error_description') || hashParams.get('error')
-  return hashErr ? decodeURIComponent(hashErr.replace(/\+/g, ' ')) : null
-}
-
-function cleanOAuthFromUrl() {
-  if (!window.location.search && !window.location.hash) return
-  window.history.replaceState({}, document.title, window.location.pathname)
+  const fromHash =
+    hashParams.get('error_description') ||
+    hashParams.get('error')
+  return fromHash ? decodeURIComponent(fromHash.replace(/\+/g, ' ')) : null
 }
 
 export function AuthProvider({ children }) {
@@ -50,61 +47,49 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
-    async function initAuth() {
-      const oauthError = readOAuthError()
-      if (oauthError) {
-        if (mounted) {
-          setAuthError(oauthError)
-          setLoading(false)
-        }
-        cleanOAuthFromUrl()
-        return
-      }
-
-      // Single call — Supabase exchanges ?code= via PKCE using authStorage (cookies + localStorage).
-      // Do NOT also call exchangeCodeForSession() manually (that causes double-exchange bugs).
-      const { data: { session: s }, error } = await supabase.auth.getSession()
-
-      cleanOAuthFromUrl()
-
+    // Supabase docs: rely on onAuthStateChange — it parses OAuth tokens from the URL
+    // before firing INITIAL_SESSION. Do NOT call getSession() or clean the URL manually.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!mounted) return
 
-      if (error) {
-        console.error('Auth session error:', error)
-        setAuthError(error.message)
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        setSession(s)
+
+        if (s?.user) {
+          await fetchProfile(s.user.id)
+          setAuthError(null)
+        } else {
+          setProfile(null)
+          if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+            const err = readOAuthError()
+            if (err) setAuthError(err)
+          }
+        }
+
         setLoading(false)
-        return
       }
-
-      setSession(s)
-      if (s?.user) {
-        await fetchProfile(s.user.id)
-      } else {
-        setProfile(null)
-      }
-      setLoading(false)
-    }
-
-    initAuth()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      if (!mounted || event === 'INITIAL_SESSION') return
-
-      setSession(s)
-      if (s?.user) {
-        await fetchProfile(s.user.id)
-        setAuthError(null)
-      } else {
-        setProfile(null)
-      }
-      setLoading(false)
     })
+
+    // Fallback if INITIAL_SESSION never fires (slow network, etc.)
+    const timeout = setTimeout(async () => {
+      if (!mounted || !loading) return
+      const { data: { session: s } } = await supabase.auth.getSession()
+      if (s) {
+        setSession(s)
+        await fetchProfile(s.user.id)
+      } else {
+        const err = readOAuthError()
+        if (err) setAuthError(err)
+      }
+      setLoading(false)
+    }, 8000)
 
     return () => {
       mounted = false
+      clearTimeout(timeout)
       subscription.unsubscribe()
     }
-  }, [fetchProfile])
+  }, [fetchProfile, loading])
 
   const signInWithGoogle = async () => {
     setAuthError(null)
