@@ -127,7 +127,9 @@ export default function AdminBooks({ onAdminAction }) {
       why_this_book: book.why_this_book || '', verse_of_week: book.verse_of_week || '',
       total_pages: book.total_pages, week_number: book.week_number, is_active: book.is_active,
     })
-    setComprehensionQuestions(book.comprehension_questions || [])
+    setComprehensionQuestions(
+      Array.isArray(book.comprehension_questions) ? book.comprehension_questions : [],
+    )
     setCoverFile(null)
     setPdfFile(null)
   }

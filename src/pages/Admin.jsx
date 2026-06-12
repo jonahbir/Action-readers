@@ -34,7 +34,7 @@ export default function Admin() {
       <div className="flex flex-col md:flex-row gap-6">
         <AdminSidebar activeTab={tab} onTabChange={setTab} counts={counts} total={total} />
         <div className="flex-1 min-w-0">
-          <Panel onAdminAction={refresh} />
+          <Panel key={tab} onAdminAction={refresh} />
         </div>
       </div>
     </div>

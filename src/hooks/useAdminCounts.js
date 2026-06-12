@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useId } from 'react'
 import { supabase } from '../lib/supabase'
 
 const POLL_MS = 60 * 1000
 
 /** Counts of items admins should check — shown as badges on the admin sidebar. */
 export function useAdminCounts({ enabled = true } = {}) {
+  const channelId = useId()
   const [counts, setCounts] = useState({
     reviews: 0,
     users: 0,
@@ -53,7 +54,7 @@ export function useAdminCounts({ enabled = true } = {}) {
     refresh()
 
     const channel = supabase
-      .channel('admin-notification-counts')
+      .channel(`admin-notification-counts${channelId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, () => refresh())
@@ -65,7 +66,7 @@ export function useAdminCounts({ enabled = true } = {}) {
       supabase.removeChannel(channel)
       clearInterval(poll)
     }
-  }, [enabled, refresh])
+  }, [enabled, refresh, channelId])
 
   const total = counts.reviews + counts.users + counts.books
 

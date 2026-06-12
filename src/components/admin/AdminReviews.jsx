@@ -19,12 +19,12 @@ export default function AdminReviews({ onAdminAction }) {
     ])
     setPending(p || [])
     setApproved(a || [])
-    onAdminAction?.()
   }
 
   const updateStatus = async (id, status) => {
     await supabase.from('reviews').update({ status }).eq('id', id)
-    load()
+    await load()
+    onAdminAction?.()
   }
 
   const ReviewRow = ({ review, actions }) => (

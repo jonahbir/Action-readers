@@ -10,8 +10,10 @@ import { APP_NAME } from '../../lib/constants'
 
 export default function Navbar() {
   const { session, profile, signInWithGoogle, signOut, isAdmin } = useAuth()
-  const { total: adminAttentionCount } = useAdminCounts({ enabled: isAdmin })
   const location = useLocation()
+  const { total: adminAttentionCount } = useAdminCounts({
+    enabled: isAdmin && !location.pathname.startsWith('/admin'),
+  })
   const [menuOpen, setMenuOpen] = useState(false)
 
   const links = session

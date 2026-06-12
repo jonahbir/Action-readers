@@ -44,11 +44,12 @@ export function useReading(book, currentPage) {
       }
       setIsPaused(false)
     }
-    document.addEventListener('visibilitychange', () => {
+    const onVisibilityChange = () => {
       if (document.hidden) onHide()
       else onShow()
-    })
-    return () => document.removeEventListener('visibilitychange', () => {})
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
   /** Whole seconds elapsed on this page (for DB). */

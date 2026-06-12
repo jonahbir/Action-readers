@@ -16,7 +16,6 @@ import Button from '../components/ui/Button'
 import BookDetailModal from '../components/books/BookDetailModal'
 import DownloadBookModal from '../components/books/DownloadBookModal'
 import ComprehensionModal from '../components/reading/ComprehensionModal'
-import PdfPageSidebar from '../components/reading/PdfPageSidebar'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
@@ -49,16 +48,11 @@ export default function Read() {
   const [showDetails, setShowDetails] = useState(false)
   const [showDownload, setShowDownload] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
   const askedPages = useRef(new Set())
   const prevPageRef = useRef(null)
   const sessionTimeRef = useRef(0)
 
   const { displayMs, isPaused, getElapsedSeconds, consumeTime } = useReading(book, currentPage)
-
-  useEffect(() => {
-    setSidebarOpen(!isMobile)
-  }, [isMobile])
 
   const flushTime = useCallback(async (pageNum, seconds, alsoSyncPage) => {
     if (!user || !book || !pageNum) return
@@ -229,19 +223,11 @@ export default function Read() {
             loading={null}
             className="flex flex-1 min-h-0 w-full"
           >
-            <PdfPageSidebar
-              numPages={totalPages}
-              currentPage={currentPage}
-              onSelectPage={goToPage}
-              open={sidebarOpen}
-              onToggle={setSidebarOpen}
-              isMobile={isMobile}
-            />
             <div className="flex-1 overflow-y-auto p-4 bg-surface-overlay/30">
               <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-2xl overflow-hidden">
                 <Page
                   pageNumber={currentPage}
-                  width={Math.min(isMobile ? window.innerWidth - 32 : window.innerWidth - (sidebarOpen ? 280 : 120), 800)}
+                  width={Math.min(isMobile ? window.innerWidth - 32 : window.innerWidth - 64, 800)}
                   renderTextLayer
                   renderAnnotationLayer
                   loading={<div className="p-20 text-center text-gray-500 animate-pulse">Loading page...</div>}
