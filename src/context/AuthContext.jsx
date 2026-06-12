@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
+  const authReady = useRef(false)
 
   const fetchProfile = useCallback(async (userId) => {
     const { data, error } = await supabase
@@ -66,13 +67,14 @@ export function AuthProvider({ children }) {
           }
         }
 
+        authReady.current = true
         setLoading(false)
       }
     })
 
     // Fallback if INITIAL_SESSION never fires (slow network, etc.)
     const timeout = setTimeout(async () => {
-      if (!mounted || !loading) return
+      if (!mounted || authReady.current) return
       const { data: { session: s } } = await supabase.auth.getSession()
       if (s) {
         setSession(s)
@@ -81,6 +83,7 @@ export function AuthProvider({ children }) {
         const err = readOAuthError()
         if (err) setAuthError(err)
       }
+      authReady.current = true
       setLoading(false)
     }, 8000)
 
@@ -89,7 +92,7 @@ export function AuthProvider({ children }) {
       clearTimeout(timeout)
       subscription.unsubscribe()
     }
-  }, [fetchProfile, loading])
+  }, [fetchProfile])
 
   const signInWithGoogle = async () => {
     setAuthError(null)
