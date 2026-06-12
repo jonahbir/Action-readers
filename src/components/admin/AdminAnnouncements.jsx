@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Card from '../ui/Card'
 import Button from '../ui/Button'
 import Avatar from '../ui/Avatar'
+import FileUploadZone from '../ui/FileUploadZone'
 
 export default function AdminAnnouncements() {
   const { profile } = useAuth()
@@ -60,7 +61,14 @@ export default function AdminAnnouncements() {
             placeholder="Title" className="w-full bg-surface-overlay border border-border-subtle rounded-xl px-4 py-2.5 text-white" />
           <textarea value={form.body} onChange={(e) => setForm(f => ({ ...f, body: e.target.value }))}
             placeholder="Body" rows={4} className="w-full bg-surface-overlay border border-border-subtle rounded-xl px-4 py-2.5 text-white resize-none" />
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} className="text-sm text-gray-400" />
+          <FileUploadZone
+            label="Photo (optional)"
+            hint="JPEG, PNG, or WebP — max 5 MB"
+            accept="image/jpeg,image/png,image/webp"
+            file={imageFile}
+            onFile={setImageFile}
+            variant="image"
+          />
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input type="checkbox" checked={form.pinned} onChange={(e) => setForm(f => ({ ...f, pinned: e.target.checked }))} />
             Pin to top
